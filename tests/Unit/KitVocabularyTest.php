@@ -20,7 +20,7 @@ use Tests\Support\ToolkitFiles;
  * @return list<array{file: string, line: int, text: string}>
  */
 $shippedLines = fn (): array => ToolkitFiles::scanLines(
-    (new Finder)->files()->ignoreDotFiles(false)->in([ToolkitFiles::path('plugins'), ToolkitFiles::path('scaffold')]),
+    (new Finder)->files()->ignoreDotFiles(false)->in([ToolkitFiles::path('plugins'), ToolkitFiles::path('scaffold'), ToolkitFiles::path('src'), ToolkitFiles::path('machine')]),
 );
 
 describe('shipped vocabulary', function () use ($shippedLines): void {

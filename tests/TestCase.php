@@ -4,12 +4,22 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use Lundflow\LundflowServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 /**
- * The hook guards drive their scripts through Laravel's `Process` facade, so the
- * Feature suite needs a booted container — Testbench supplies one without an app.
- * `base_path()` resolves inside Testbench's skeleton, never this repo: read kit
- * files through `ToolkitFiles::path()`.
+ * The Feature suite boots the package inside Testbench's skeleton app — the hook
+ * guards need its container for the `Process` facade, and the worktree commands
+ * need the service provider. `base_path()` resolves inside that skeleton, never
+ * this repo: read kit files through `ToolkitFiles::path()`.
  */
-abstract class TestCase extends Orchestra {}
+abstract class TestCase extends Orchestra
+{
+    /**
+     * @return list<class-string>
+     */
+    protected function getPackageProviders($app): array
+    {
+        return [LundflowServiceProvider::class];
+    }
+}

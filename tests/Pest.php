@@ -66,3 +66,19 @@ function pathWithoutJq(): string
 
     return $dir;
 }
+
+/**
+ * A committed fixture's exact bytes, by its path under `tests/Fixtures/`.
+ *
+ * Fixtures are byte-exact captures of real tool output, so a missing one is a
+ * broken checkout rather than an empty input — it fails loudly instead of reading
+ * back as `''`.
+ */
+function fixtureBytes(string $path): string
+{
+    $absolute = dirname(__DIR__).'/tests/Fixtures/'.$path;
+
+    expect($absolute)->toBeFile();
+
+    return (string) file_get_contents($absolute);
+}
