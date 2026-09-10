@@ -1,0 +1,10 @@
+{
+    "name": "lundflow",
+    "version": "0.1.0",
+    "description": "The stack-agnostic workflow: test-first TDD loop, planning pipeline, multi-agent PR review, and the guard hooks that keep them honest.",
+    "author": {
+        "name": "jasonlund"
+    },
+    "repository": "https://github.com/jasonlund/lundflow",
+    "license": "MIT"
+}

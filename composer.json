@@ -1,0 +1,32 @@
+{
+    "name": "jasonlund/lundflow",
+    "description": "Claude Code workflow kit: TDD, planning, review and worktree lifecycle as plugins",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "jasonlund",
+            "email": "jasonlund@gmail.com"
+        }
+    ],
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "pest --compact"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "require-dev": {
+        "pestphp/pest": "^4.7",
+        "pestphp/pest-plugin-laravel": "^4.1",
+        "orchestra/testbench": "^11.2",
+        "symfony/yaml": "^8.1",
+        "laravel/pint": "^1.32"
+    }
+}

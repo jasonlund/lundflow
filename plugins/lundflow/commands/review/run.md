@@ -1,0 +1,138 @@
+---
+name: review:run
+description: Orchestrates the full PR review loop end-to-end with confirmation gates — optional cross-slice refactor sweep, then create-pr → debrief → human → suite → process → delta review of the fixes. Each stage pauses for approval before the next.
+---
+
+# Review Loop Orchestrator
+
+Runs the review pipeline as one guided sequence. Drive each stage **in order**,
+pausing at the ⏸ gates for the user. Each stage's mechanics live in its own
+command — **defer to that file, do not reimplement it here.**
+
+Loop: `[cross-slice sweep?]` → `/review:create-pr` → `/review:debrief` →
+`/review:human` → `/review:suite` → `/review:process` → `[delta review]`.
+
+## Input
+- **PR number** — optional, auto-detected from the branch.
+- **Ticket ID** — `FLIX-XXX`, optional.
+
+## Sequence
+
+### Stage 0: Cross-slice refactor sweep (conditional)
+Decide whether the branch spans **more than one TDD slice**. Ticket count is
+irrelevant: `tdd-refactorer` is spawned per slice with only that slice's files
+(`.claude/skills/tdd/SKILL.md`, "Step 3 — REFACTOR"), so one ticket of many
+slices has the same blind spot as many tickets. Expect this to fire **routinely, by design** — a
+slice is only 2–6 tests (`.claude/skills/tdd/SKILL.md`), so most non-trivial PRs
+span several; a high hit rate is the gate working, not a misfire.
+
+1. **Authoritative source — the tickets' TDD Slice Backlogs.** Resolve **every**
+   `FLIX-\d+` id in the branch name, not just the first: read each body
+   (`plan-slices` appends the backlog, one `### Slice N —` block per slice) and
+   **sum** the slice counts across all of them. That sum decides. This is
+   deliberately broader than Ticket ID Auto-Extraction
+   (`.claude/skills/review-pipeline/SKILL.md`), whose first-match-only rule names
+   one ticket rather than counts work — don't lean on that contract here. A sum of
+   **0** (no backlog, or a "zero TDD slices" verdict) means the backlog can't
+   answer: fall through to step 2, then step 3 — never treat it as single-slice.
+2. **`git status --short` is the secondary signal — only it sees the working
+   tree.** At Stage 0 the branch is usually **not yet committed** (Stage 1 is what
+   commits it), so `git diff origin/main...HEAD --stat` reads committed history
+   only and is routinely empty; run it when Stage 0 is **re-entered** and commits
+   already exist. Neither maps slices to commits or files; use them only to
+   corroborate the backlog.
+3. **Still ambiguous → run the sweep.** A needless sweep costs one green-gated
+   refactor pass; a missed one ships the duplication this stage exists to catch.
+
+- **Multi-slice** → invoke the `review-tdd-cross-slice` skill (whole-PR REFACTOR
+  sweep). It runs its **own** green-precondition + approval gate — let it.
+- **Single-slice** → skip and say so (that one slice's own REFACTOR saw everything).
+
+### Stage 1: create-pr  ⏸
+If the branch has **no open PR**, follow `.claude/commands/review/create-pr.md`
+(lint → commit → push → open). Show the drafted title/body and **pause for
+approval before opening**. If a PR already exists, skip this stage.
+
+### Stage 2: debrief  ⏸
+Follow `.claude/commands/review/debrief.md` — plain-language summary of the branch +
+ticket-scope check. **Pause** so the user reads it before the engines dig for
+defects.
+
+### Stage 3: human  ⏸
+Follow `.claude/commands/review/human.md` — the Linear diff link, the wait while a
+person reads the diff and submits their review, and the ingest of what comes back.
+**Pause** for the whole read: the loop moves on only when the reviewer says they
+are done.
+
+**Why this sits before the engines**, so the next person to tidy the loop doesn't
+move it after them:
+- **A posted finding biases the reader.** Someone who has already scrolled fifteen
+  engine findings checks that list instead of forming their own view of the branch,
+  and the view is the only thing this stage is here to get.
+- **The engines then review better code.** The structural objections a human raises
+  are already fixed by the time they run, so the pass is spent on what survived
+  rather than on code that was about to be restructured anyway.
+- **Stage 4's suite covers whatever this round fixes**, which is why this stage
+  needs no delta pass of its own the way Stage 5 does — its fixes land before the
+  engines and the full suite have run, not after them.
+
+### Stage 4: suite
+Follow `.claude/commands/review/suite.md` — runs both engines (`/review:claude` +
+CodeRabbit) and posts each to the PR as its own review. No pause — this is the
+machine work.
+
+### Stage 5: process  ⏸
+**Before dispatching a single fixer, record the pre-fix commit:**
+```bash
+PRE_FIX_SHA=$(git rev-parse HEAD)
+```
+Then follow `.claude/commands/review/process.md` — triage the posted feedback, present
+one numbered list carrying your recommendations, take the user's overrides, dispatch
+fixers. Already interactive.
+
+### Stage 6: delta review  ⏸
+**The fixes Stage 5 just landed have never been reviewed by anything.** The engines
+in Stage 4 saw the pre-fix tree; the fixers that changed it were isolated subagents
+each seeing one item. A bad fix ships with the same blast radius as any other bug,
+and nothing upstream is looking at it. This stage closes that.
+
+**Review only what we implemented — never re-review the whole PR.**
+
+1. **Compute the delta.** `git diff {PRE_FIX_SHA}..HEAD`. Empty (every item skipped,
+   or Stage 5 never ran) → skip this stage and say so.
+2. **Re-run the deterministic gates** (Pint, Rector scoped to the changed files, the
+   full Pest suite). Stage 5's fixers only ran filtered tests.
+3. **Dispatch ONE focused reviewer** over that delta — `review-bug-hunter` by
+   default, since fix regressions are overwhelmingly failure-mode bugs rather than
+   convention drift. Give it:
+   - the delta diff **as the only thing in scope** — state plainly that the base
+     implementation was already reviewed and its findings resolved, so re-raising
+     anything outside the delta is out of scope;
+   - **what each fix changed and what it could plausibly break** — this is the
+     highest-value part of the prompt. A fix that narrows a query can strand rows; a
+     fix that reorders guards can change what runs on an early return; a fix that
+     swaps a sort key can drop a tie-break. Name the specific suspicion per item.
+   - the ticket context, and the pipeline contract's finding format + Comment Bar.
+4. **Route any findings back through Stage 5's mechanics** — present each with your
+   own recommendation, take Approve/Modify/Skip, dispatch a foreground fixer, commit.
+5. **Then re-enter Stage 6 on the *new* delta.** Loop until a pass comes back clean.
+   **Cap at 3 rounds**; if round 3 still finds real defects, stop and tell the user
+   the fixes are churning — that is a signal to rethink the approach, not to keep
+   patching.
+
+Findings here are usually few. A clean pass is the expected outcome and takes one
+agent over a small diff — cheap relative to shipping a regression introduced by a
+fix the user already approved.
+
+## Rules
+- **One stage at a time.** Never skip a ⏸ gate.
+- A stage that HALTs (no PR to review, no diff, etc.) **stops the loop** and reports
+  why — it does not silently continue.
+- **Defer, don't duplicate.** Each stage's logic lives in its command/skill file;
+  this orchestrator only sequences and gates. Stage 6 is the one exception — it has
+  no command file of its own, so its mechanics live here.
+- **Every commit the loop produces gets reviewed before the loop ends.** Stage 6
+  applies that to Stage 5's fixes; if you ever land code outside a stage, it needs
+  the same treatment.
+
+$ARGUMENTS

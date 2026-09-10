@@ -1,0 +1,10 @@
+{
+    "name": "worktree",
+    "version": "0.1.0",
+    "description": "LaborForest + Solo worktree lifecycle: /worktree:up and /worktree:down.",
+    "author": {
+        "name": "jasonlund"
+    },
+    "repository": "https://github.com/jasonlund/lundflow",
+    "license": "MIT"
+}

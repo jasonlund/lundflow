@@ -1,0 +1,10 @@
+{
+    "name": "laravel",
+    "version": "0.1.0",
+    "description": "Laravel + Inertia + React test conventions and seam vocabulary for the lundflow TDD loop.",
+    "author": {
+        "name": "jasonlund"
+    },
+    "repository": "https://github.com/jasonlund/lundflow",
+    "license": "MIT"
+}

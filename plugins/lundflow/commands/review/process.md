@@ -1,0 +1,504 @@
+---
+name: review:process
+description: Third stage after /review:claude → /review:add. Collects un-resolved PR feedback (GitHub inline threads, review-body findings, general comments, Conductor diff-comments), triages it against the Linear ticket and the PR head, presents one numbered list where every item carries your recommendation and its reasoning, takes a reply of overrides while silence accepts every recommendation, dispatches a foreground fixer per approval (parallel file-disjoint waves, test-first, no commit), then replies to and resolves everything it considered and prompts to commit/push.
+---
+
+# Process Review Feedback
+
+The final stage of the review loop: `/review:create-pr` → `/review:debrief` →
+`/review:human` → `/review:claude` → `/review:add` → **`/review:process`**. You read
+back the feedback still open on the PR, settle it with the user in **one gate**,
+dispatch isolated fixer subagents, then reply to and resolve everything you considered
+so a future run never re-triages it.
+
+Fixing happens in `review-fixer` subagents. You triage, present, dispatch, verify, and
+resolve.
+
+## Input
+
+- **PR number** — positional arg, or auto-detected from the current branch.
+- **`--leave-human-open`** — reply to human-authored threads but leave them open for
+  the reviewer to close. Threads our own pipeline and known bots authored still resolve.
+- **`--human-round`** — triage the human reviewer's comments instead of the bot round.
+  `/review:human` Phase 2 passes it. **The Human Round** below states what changes.
+
+## Example Invocation
+
+```
+/review:process                          # auto-detect PR from the current branch
+/review:process 142                      # explicit PR
+/review:process 142 --leave-human-open   # let humans close their own threads
+/review:process 142 --human-round        # triage the submitted human review
+```
+
+---
+
+## The Human Round
+
+`--human-round` triages the review a person submitted in Linear. `/review:human`
+Phase 2 hands it here once the review reaches the PR.
+
+Triage is otherwise **identical to the bot round**: the same collector, the same
+ticket check, the same head-commit check, the same scope routing, grouping and
+sorting. There is no second triage path to look for. Four things change, and only
+these four.
+
+1. **Scope.** Collect the un-resolved items where `isBot` is false. Any human
+   reviewer counts — the author most often, a teammate just as validly. Leave the
+   bot items to the ordinary round.
+2. **Validator exemption.** Human items are exempt from `review-bug-validator` and
+   from `review-compliance-validator`. Both validators are fail-closed: each one
+   drops the item it cannot confirm. A machine that silently drops a deliberate
+   human read is the one failure this stage must not have. Phase 1 step 1 carries
+   the same exemption, because its default sends external feedback to a validator.
+3. **The `CONVERSATION` group.** Most human comments make no claim about a defect.
+   *The `CONVERSATION` group* below states where they go.
+4. **Zero items.** Report zero plainly and name the likeliest cause: a Linear
+   review saved as a draft never reaches GitHub, so the pipeline cannot see it.
+   Zero items is not by itself a clean review.
+
+### Classification — the inbound vocabulary
+
+Classify every human item with the **Conventional Comments** labels: `praise:`,
+`nitpick:`, `suggestion:`, `issue:`, `question:`, `thought:`, `chore:`. Infer the
+label from the comment by default.
+
+An explicit prefix the reviewer wrote — `question:`, `issue:` — **overrides** your
+inference. The reviewer stated the intent, so read it as stated.
+
+An **ambiguous** item goes to `DISCUSS`, never to a silent fixer dispatch. Every
+major tool asks for an explicit signal rather than guessing intent, because a false
+positive costs more than a question does.
+
+Route the labels: `issue`, `nitpick` and `suggestion` are claims about the code and
+take the ordinary buckets. `praise`, `question`, `thought` and `chore` go to the
+group below.
+
+### The `CONVERSATION` group
+
+`APPROVE`, `DISCUSS` and `SKIP` each assume the item is a claim about the code. A
+question, an observation or a judgment call is not one, so it gets its own group.
+
+Print `CONVERSATION` after the defect groups, in the order the reviewer wrote its
+items. The group carries no `[SEVERITY]` tag. A question has no severity, and
+ranking one against a BLOCKING defect invents a number.
+
+Give every item in the group one of three dispositions:
+
+- **`ANSWER`** — answer the item inline, in its own `Answer:` slot. An `ANSWER`
+  stands by default, like an `APPROVE`. Where your answer implies a change to the
+  code, the item **leaves `CONVERSATION`**: give it the `[SEVERITY]` that change
+  carries and print it in `DISCUSS`, where the user rules on it. `CONVERSATION`
+  carries no severity, so an escalated item has no group to print in until you
+  assign one.
+- **`ACKNOWLEDGE`** — praise. Reply to it and resolve it in Phase 5. Dispatch no
+  fixer.
+- **`TICKET`** — a chore or a todo for later. Offer it in the Phase 6 batch beside
+  the reinforcements, and create the ticket only on the user's approval.
+
+### Disagreement
+
+Where you judge a human item wrong, mark the item `DISCUSS` and hold the gate.
+State the trade-off in the item's own slots, because the user rules only on a
+disagreement they can see. Dispatch no fixer on a change you believe is wrong.
+Understand the item before you act on it, and state the trade-off rather than
+comply or refuse.
+
+---
+
+## Phase 0: Collect
+
+1. **PR number** — if not passed, follow **PR Number Auto-Extraction** in
+   `.claude/skills/review-pipeline/SKILL.md`. With no PR found, HALT and tell the user
+   to push the branch and open a PR, or to pass the number.
+2. **Repo and PR head** — `{owner}`/`{repo}` from
+   `gh repo view --json owner,name --jq '{owner: .owner.login, repo: .name}'`, and
+   `{headRefOid}` — the PR's head commit — from
+   `gh pr view {number} --json headRefOid -q .headRefOid`.
+3. **Dispatch `review-feedback-collector`** with the PR number, owner, and repo. It
+   returns one normalized JSON array: every un-resolved GitHub item, keyed, with each
+   item's `scope` already checked against the PR diff and `isBot` set. The fetch, parse,
+   ref-keying, and diff arithmetic all live there — its contract is
+   `.claude/agents/review-feedback-collector.md`.
+4. **Conductor diff-comments** — read these from the **current conversation's
+   attachments**; the Conductor MCP cannot fetch them, so the collector cannot see them.
+   Normalize each to the collector's item shape with `source: conductor`. Under
+   LaborForest + Solo this source is empty and GitHub carries all the feedback.
+5. **Linear ticket context (body + comments).** Resolve every ticket id in the branch
+   name and fetch each with `mcp__linear-server__get_issue` **and**
+   `mcp__linear-server__list_comments`. Read the body *and* the full comment thread:
+   comments record **deviations from the original plan** — a decision reversed, a scope
+   cut, an approach changed mid-flight. Extract those into a short list you carry into
+   triage. This is authoritative project intent and it **overrides** reviewer findings,
+   convention defaults, and your own priors. With a ticket unfetchable, note it and
+   continue.
+
+Zero items across every source → say so and stop.
+
+---
+
+## Phase 1: Triage
+
+Work the collector's list into the Phase 2 gate list, plus the skips and dismissals that
+go straight to Phase 5.
+
+1. **Weigh origin.** Items carrying the `/review:add` footer (`via /review:claude`,
+   `Found by:`) already passed a per-finding validator inside `/review:claude`, which
+   drops every finding it cannot confirm — **trust them as they stand**. Scrutinize only
+   *external* feedback (human reviewers, general comments, Conductor diff-comments)
+   against the **Convention Override Rule** and "Commonly false-positived conventions"
+   in `.claude/skills/review-pipeline/SKILL.md`. High-volume or low-confidence external
+   feedback may go to the matching validator — `review-bug-validator` or
+   `review-compliance-validator` — one item per dispatch, answered CONFIRMED or DROPPED.
+   **In `--human-round`, every item is exempt from both validators.** Each validator
+   is fail-closed and drops what it cannot confirm, and a deliberate human read that
+   a machine deleted is the one loss this stage must not take.
+2. **Check each item against the Linear ticket** (Phase 0 step 5). Where the ticket
+   **endorses** what a reviewer flagged — the change was a deliberate, documented
+   deviation — recommend **Skip** and cite the ticket comment; a settled call stays
+   settled. Where the ticket **contradicts** the code — the code drifted from a
+   documented decision — recommend **Approve** even at low severity. Name the ticket
+   whenever it drove the call.
+3. **Check each item against the PR head.** `/review:add` posts a finding against the
+   commit that was head at the time, and the work often lands before this command runs,
+   so treat every finding as a claim about the past until you confirm it against the
+   present. Read the flagged code at the head commit `{headRefOid}` Phase 0 step 2
+   fetched — `gh api repos/{owner}/{repo}/contents/{path}?ref={headRefOid}` — because the
+   PR's branch may not be the branch you are standing on. Where the head already resolves
+   the finding, mark the item **already fixed** and name the commit that did it. Trust the
+   file over the ticket: a ticket that claims a fix is a claim about the past too.
+4. **Route by scope.** The collector marked each item `in` or `out`. An `out` item at
+   SHOULD_FIX / CONSIDER / NIT is **recorded as a skip** with the rationale "out of scope
+   — PR did not create or modify this code" and resolved in Phase 5. An `out` item at
+   BLOCKING joins the Phase 2 list under its own header. A `CONVERSATION` item carries
+   no severity and matches neither branch, so it joins the Phase 2 list whatever its
+   scope mark: a question about code this PR left alone is still a question the
+   reviewer asked.
+5. **Group** duplicates and relatives by `(file, line ±10, category)` — the key
+   `/review:claude` Phase 3 merges on. A group is presented and fixed as one unit.
+6. **Sort** BLOCKING → SHOULD_FIX → CONSIDER → NIT, by the `/review:add` badge
+   (🔴/🟠/🟡/⚪) where present, otherwise by the contract taxonomy.
+7. **Settle the dismissals silently.** An item you judge a false positive — or one that
+   arrives already labeled dismissed (a ⚫ *Dismissed as false positive* badge from
+   `/review:add` or CodeRabbit) — is **recorded as a dismissal** with its rationale and
+   resolved in Phase 5. A settled dismissal needs no confirmation.
+
+   Where the dismissal is wrong about a pattern the project deliberately uses and will
+   keep using (`RefreshDatabase` / `Http::preventStrayRequests()` global in
+   `tests/Pest.php`; DDD model placement; service-constant base URLs), **capture a
+   reinforcement** so the same false positive stops returning every run. Capture one or
+   both, then carry on — Phase 6 offers them in one batch:
+   - **Convention registry** — the exact one-line bullet you would add to "Commonly
+     false-positived conventions" in `.claude/skills/review-pipeline/SKILL.md`, so our
+     own reviewers stop raising it.
+   - **External reviewer config** — for a CodeRabbit or other CLI-engine flag, the
+     path-scoped rule for its config (e.g. `.coderabbit.yaml`).
+
+Items marked `in`, every item with no file or line, the already-fixed items, the
+out-of-scope BLOCKING items, and every `CONVERSATION` item go to Phase 2. Skips and
+dismissals go straight to Phase 5.
+
+---
+
+## Phase 2: The Gate — one list, one reply, silence accepts
+
+Present every item once, each carrying your recommendation and the reasoning behind it.
+One reply settles the whole list: every recommendation stands unless an override names
+its number.
+
+This list is a **disposition list** — the rendering *Asking the user a question* in
+`.ai/guidelines/project.md` defines for a batch of already-triaged items. The contract
+there binds it, numbering included.
+
+**Number the items globally `1..N`. A number is assigned once and keeps naming that item
+for the rest of the session** — the Phase 6 summary, and any later round. A delta round
+(`/review:run` Stage 5) **continues** the sequence rather than restarting at `1`, so the
+user can still amend item 6 by number two rounds on.
+
+Group by your recommendation — `APPROVE` (worth fixing, so do it) and `SKIP` (you would
+drop it) — then `ALREADY FIXED` (the head resolves it, so it needs a reply and no work)
+and the out-of-scope BLOCKING items, each last under its own header. Sort by severity
+inside each group. Severity — `BLOCKING`, `CONSIDER`, `NIT` — is orthogonal to the
+bucket, so a `CONSIDER` item is free to land in `APPROVE`. Print only the groups that
+have items.
+
+**Every item gets a side, including the close calls.** A close call you would rather put
+to the user still goes in `APPROVE` or `SKIP`, filed by the way you lean, with the lean
+written out in `Why` (below). You lose the option to defer; the user gains a list they
+can settle in one reply, or in none.
+
+In `--human-round`, the `CONVERSATION` group prints after every group above, in the
+order the reviewer wrote its items.
+
+Fill this shape verbatim, one entry per item:
+
+```
+APPROVE
+
+1. [BLOCKING] Add `_tmdb_id` to the upsert conflict key. (claude, coderabbit)
+   app/Domains/Catalog/Actions/UpsertTmdbMovies.php:88-94
+   Issue: `UpsertTmdbMovies` matches an existing row on `_imdb_id` alone. TMDB carries
+          movies that hold no IMDb id, so every sync run inserts those rows again.
+   Fix:   Add `_tmdb_id` to the conflict key in the `upsert()` call.
+   Why:   The table has no unique index, so nothing else stops the duplicates.
+
+SKIP
+
+6. [CONSIDER] Route the crosswalk parse through `SourceId`. (coderabbit)
+   app/Domains/Catalog/Actions/ImportImdbTitles.php:141
+   Issue: The action validates an IMDb id with an inline regex. `SourceId` is the shared
+          normalizer that every other crosswalk parse site calls.
+   Fix:   Replace the inline guard with `SourceId::imdb($raw)`.
+   Why:   The guard predates `SourceId` and this PR leaves the file alone. I lean skip.
+
+7. [NIT] Rename `$res` to `$response`. (coderabbit)
+   app/Domains/Catalog/Services/TmdbApiService.php:52
+   Issue: The variable holds a `Response`. Its siblings in the same class spell the
+          name out in full.
+   Why:   This PR leaves the line alone, so the rename is churn a reviewer must read.
+
+ALREADY FIXED
+
+8. [BLOCKING] Guard every step in `refresh.yaml` against the primary checkout. (claude, coderabbit)
+   .laborforest/workflows/refresh.yaml:1
+   Issue: `refresh` drops and reseeds the database it runs against. Run from the primary
+          checkout it takes `lundflix`, whose catalog the committed dumps do not carry.
+   Fixed: 39706da puts the primary-checkout `if:` on all three steps, and sweeps them
+          in `LaborForestWorkflowTest`.
+
+OUT OF SCOPE — BLOCKING (this PR did not touch this code)
+
+9. [BLOCKING] Scope the tenant query on L40. (claude)
+   app/Domains/Billing/Queries/TenantRows.php:40
+   Issue: `TenantRows::all()` builds its query with no tenant clause. It returns every
+          tenant's rows to whichever tenant asks.
+   Fix:   Add `->where('tenant_id', $tenant->id)` to the builder.
+   Why:   A fix here widens a PR that never touched this file. I lean skip — open a ticket.
+
+CONVERSATION
+
+10. ANSWER — Why does the collector key a body finding on `{ref}`? (jasonlund)
+    .claude/agents/review-feedback-collector.md:64
+    Issue:  The reviewer asks how a re-run knows it handled a review-body finding.
+    Answer: A body finding carries no comment id and no resolve mutation. Phase 5
+            writes the `{ref}` token into the reply footer, and the collector
+            matches that token next run.
+```
+
+**Line 1** carries the number, the `[SEVERITY]` tag, the fix as a command, and who flagged
+it in parentheses (the finding's `Found by:` list, or the reviewer's name for external
+feedback). **Line 2** is the location, written as a **bare repo-relative `path:line`** —
+the terminal linkifies a bare path only, so leave backticks, quotes and `@` off it. An
+item with no line stops after line 1.
+
+A `CONVERSATION` item carries no `[SEVERITY]` tag on line 1. It opens with the number,
+then its disposition — `ANSWER`, `ACKNOWLEDGE` or `TICKET` — then the reviewer's own
+question or remark, then who wrote it.
+
+The slots below line 2 carry the substance. Every item states its issue and its
+disposition; `Fix` joins them wherever a change is on the table:
+
+| Slot | Appears on | Holds |
+| --- | --- | --- |
+| `Issue:` | every item | Up to two sentences: what the code does, then what goes wrong. |
+| `Fix:` | `APPROVE`, out-of-scope BLOCKING, and a close-call `SKIP` | One sentence naming the concrete change. |
+| `Why:` | `APPROVE`, `SKIP`, out-of-scope BLOCKING | One sentence carrying the reason for your recommendation. |
+| `Answer:` | `ANSWER` | Up to two sentences answering the item, plus the evidence the question asks for. |
+| `Fixed:` | `ALREADY FIXED` | The commit that resolved it, and what that commit changed. |
+
+A close call — and every out-of-scope BLOCKING item is one — closes `Why` with the
+reasoning and then states the lean it is filed on: **"I lean approve"** or **"I lean
+skip"**. The lean is your argument for that filing, so the user can overturn one number
+instead of re-deriving the call.
+
+**Those sentence counts are the whole verbosity budget.** Six lines is a long item.
+
+Write every slot in ASD-STE100 Simplified Technical English, using this codebase's own
+terms from `CONTEXT.md`, and **lead `Issue` with the context**: name the class, command,
+or file and say what it does, then say what goes wrong. The user decides on a dozen of
+these cold, so a finding that assumes they already hold the code in their head costs them
+a trip to the file.
+
+- **Context first, then the defect.** "`refresh` drops and reseeds the database it runs
+  against" earns the sentence that follows it.
+- **One topic per sentence**, ≤25 words, active voice, present tense.
+- **Recommendations are commands** — "Add a tenant scope to the query on L40."
+- **One word, one meaning.** Repeat the term exactly; elegant variation costs a re-read.
+- **Quoted code and quoted ticket lines stay verbatim** — they are evidence.
+
+The full spec is *How Findings Are Written* in `.claude/skills/review-pipeline/SKILL.md`.
+
+Then prompt once, as plain text. The list above is the disposition list's entries; this
+prompt is the closing line the contract asks for. Every recommendation **stands by
+default**, so the user replies only with overrides, as `<approve|skip> <numbers>` lines,
+and the close says so outright — silence accepts what you recommended. In
+`--human-round` the grammar carries the conversational dispositions too —
+`<approve|skip|answer|acknowledge|ticket> <numbers>` — so one override line moves a
+`CONVERSATION` item the way it moves any other:
+
+```
+Approve/skip stand as recommended — reply only with overrides.
+No reply accepts every recommendation above.
+```
+
+Stop and wait.
+
+**Final buckets = your recommendations + the user's overrides.** Apply each override
+line, moving exactly the numbers it names; a later override for the same number wins. An
+unnamed `APPROVE`, `SKIP`, or `ALREADY FIXED` number keeps your recommendation, and an
+unnamed out-of-scope BLOCKING number takes the lean written on it. A bare number list
+(`1 4`) approves those.
+
+```
+recommended:  approve 1 2 4 · skip 3 5 6 (6 lean skip) · already fixed 7
+user:         skip 2 · approve 6
+final:        approve 1 4 6 · skip 2 3 5 · already fixed 7
+```
+
+Every item ends as **approve**, **skip**, or **already fixed**. In `--human-round` a
+`CONVERSATION` item ends on its own disposition instead — **answered**,
+**acknowledged** or **ticketed** — each terminal in its own right, and none of them
+dispatches a fixer. **Approve** dispatches (Phase 3); **skip** records its reason for
+Phase 5. **Already fixed** stands unless the user approves the number — read that
+override as "the head does not resolve this", so re-read the file before dispatching,
+and say what you find either way.
+
+Where the user asks about an item rather than ruling on it, answer in the item's own
+slots — `Issue`, `Fix`, `Why` — so the answer reads like the entry it belongs to, and add
+the evidence the question asks for. That answer is a fresh round in the same format, so it
+closes the same way: the item stands as filed unless the next reply overrides it.
+
+---
+
+## Phase 3: Dispatch — parallel, foreground
+
+Every fixer is a foreground `Agent` call. A `PreToolUse` hook
+(`.claude/hooks/no-background-gated-subagents.js`) denies a backgrounded `review-fixer`, so each
+result returns inside the dispatching turn and the harness never wakes you mid-flow.
+
+Group the dispatched items into **waves where no two items share a target file** — the
+files a comment points at, plus the obvious siblings a fix will touch. Two fixers editing
+one file at once corrupt each other's work. Dispatch a wave as a single message holding
+parallel `Agent` calls; they run concurrently and all return before the turn continues.
+Usually one wave covers everything.
+
+Each `review-fixer` gets the item or group, its target files, the resolution to reach, and
+the standing constraints: touch only its files, run only filtered tests, leave global
+formatters alone, and leave committing to the orchestrator.
+
+Hold each returned blocker until every wave is back, then settle the held blockers inline
+— re-dispatch with new guidance, or skip. Phase 3 ends when every dispatched item's fixer
+has returned and every blocker is settled.
+
+---
+
+## Phase 4: Verify centrally
+
+1. Read the aggregate diff and confirm each dispatched item landed as specified, against
+   what each fixer reported: `git diff` (or Conductor's `GetWorkspaceDiff`).
+2. Run the affected suites **once, here** — the one place safe from parallel clobber:
+   ```bash
+   php artisan test --compact --filter={affected}   # backend, if PHP changed
+   npx vitest run {affected}                        # frontend, if JS/TS changed
+   vendor/bin/pint --dirty --format agent           # style fix
+   ```
+3. Re-dispatch a fixer for anything red or unaddressed, or surface it to the user. A red
+   suite stops the run here.
+
+---
+
+## Phase 5: Reply + resolve everything considered
+
+Every item you considered gets a reply — fixed, skipped, dismissed as a false positive, or
+out of scope. Resolving is what stops a future run reconsidering it, so out-of-scope items
+get their reply and resolve too, whether or not they reached the gate.
+
+- **Fixed** → a one-line summary of the change.
+- **Already fixed** → the commit that resolved it and what that commit changed, so the
+  reply reads as evidence rather than a claim.
+- **Skipped / dismissed** → the rationale.
+- **Answered / acknowledged** → the text of the item's `Answer:` slot, or a one-line
+  acknowledgment for praise.
+- **Ticketed** → the point is captured, and goes to the Phase 6 batch where a ticket opens
+  only on the user's approval. No id exists yet, so the reply names none — and it is owed
+  the same whether that batch opens the ticket or the user declines it.
+- **Out of scope** → the out-of-scope rationale, and for a BLOCKING item, whether the run
+  fixed it or left it.
+
+Mechanics by source:
+
+- **gh-thread** — reply, then resolve:
+  ```bash
+  gh api repos/{owner}/{repo}/pulls/{number}/comments -F in_reply_to={commentId} -f body='…'
+  gh api graphql -F id={threadId} -f query='
+  mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved } } }'
+  ```
+  Every thread resolves by default.
+  **`--leave-human-open` holds back the resolve mutation on threads where `isBot` is
+  false** — those keep their reply and stay open for the reviewer to close, while threads
+  our own pipeline or a known bot authored resolve either way.
+- **gh-review-body** — a body finding takes no reply and has no resolve mutation, so post
+  a general comment whose footer carries the finding's stable `{ref}` from Phase 0. That
+  token is what the collector matches next run to skip it:
+  ```bash
+  gh api repos/{owner}/{repo}/issues/{number}/comments -f body='<result>
+
+  _via /review:process · ref: review-body {ref}_'
+  ```
+  One `ref:` line per finding; batch several into one comment only when each keeps its own.
+- **gh-comment** — reply only; a general comment has no resolve, so the reply's footer
+  carries the item's `{commentId}` from Phase 0. That token is what the collector matches
+  next run to skip it:
+  ```bash
+  gh api repos/{owner}/{repo}/issues/{number}/comments -f body='<result>
+
+  _via /review:process · ref: comment {commentId}_'
+  ```
+- **conductor** — reply on the same file and line with the `DiffComment` tool. Conductor
+  comments have no programmatic resolve.
+
+Close every reply with the footer marker on its own line:
+
+```
+_via /review:process_
+```
+
+**gh-review-body** and **gh-comment** extend that marker with the `ref:` token shown above
+— `review-body {ref}` and `comment {commentId}`. Neither source carries resolved state, so
+that token is the only handled-signal a re-run has. **gh-thread** resolves by mutation and
+**conductor** resolves by hand, so both close with the bare marker.
+
+---
+
+## Phase 6: Reinforcements, then commit
+
+**Offer the captured reinforcements once, as one batch.** List each registry or config
+edit from Phase 1 with the exact line you would add and the re-flag it stops, and ask
+which to apply (all / some / none). Apply the approved ones **in your own context** —
+they are docs and config edits, so a `review-fixer` is the wrong tool. Skip this step
+when Phase 1 captured none.
+
+In `--human-round`, list every `TICKET` item in the same batch, each with the ticket
+you would open for it. Create a ticket only on the user's approval.
+
+Summarize the run:
+
+```
+✅ Processed review feedback on PR #{number}
+- Addressed: {count}
+- Already fixed before this run (replied, no work): {count}
+- Skipped: {count}
+- Dismissed (false positive): {count}
+- Reinforcements applied (registry/config edits to stop re-flags): {list}
+- Tickets opened from the batch: {list}
+- Out of scope — skipped at triage (PR didn't touch this code): {count}
+- Human threads left open for the reviewer: {count}   # only with --leave-human-open
+- Files changed: {list}
+- Tests: {pass/fail summary} · Pint: {clean/fixed}
+```
+
+**Committing is the user's call.** Prompt them to commit and push. On approval, commit
+with a ticket-prefixed subject plus the co-author trailer the harness supplies for this
+session — a hardcoded trailer stamps a model version that rots — then push.
+
+$ARGUMENTS

@@ -1,0 +1,26 @@
+{
+    "name": "lundflow",
+    "owner": {
+        "name": "jasonlund"
+    },
+    "metadata": {
+        "description": "A Claude Code workflow kit: test-first TDD, a gated planning pipeline, multi-agent PR review, and a LaborForest + Solo worktree lifecycle."
+    },
+    "plugins": [
+        {
+            "name": "lundflow",
+            "source": "./plugins/lundflow",
+            "description": "The stack-agnostic workflow: test-first TDD loop, planning pipeline, multi-agent PR review, and the guard hooks that keep them honest."
+        },
+        {
+            "name": "laravel",
+            "source": "./plugins/laravel",
+            "description": "Laravel + Inertia + React test conventions and seam vocabulary for the lundflow TDD loop."
+        },
+        {
+            "name": "worktree",
+            "source": "./plugins/worktree",
+            "description": "LaborForest + Solo worktree lifecycle: /worktree:up and /worktree:down."
+        }
+    ]
+}
