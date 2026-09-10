@@ -95,7 +95,7 @@ function registeredAgentPreToolUseCommands(): array
 describe('backgrounded guarded subagents', function (): void {
     it('denies a backgrounded tdd-test-writer, naming the RED gate', function (): void {
         // Arrange
-        $payload = backgroundedAgentDispatch('tdd-test-writer');
+        $payload = backgroundedAgentDispatch('lundflow:tdd-test-writer');
 
         // Act
         $output = runBackgroundGuardHook($payload);
@@ -107,7 +107,7 @@ describe('backgrounded guarded subagents', function (): void {
 
     it('denies a backgrounded tdd-implementer, naming the GREEN gate', function (): void {
         // Arrange
-        $payload = backgroundedAgentDispatch('tdd-implementer');
+        $payload = backgroundedAgentDispatch('lundflow:tdd-implementer');
 
         // Act
         $output = runBackgroundGuardHook($payload);
@@ -119,7 +119,7 @@ describe('backgrounded guarded subagents', function (): void {
 
     it('denies a backgrounded tdd-refactorer, naming the REFACTOR gate', function (): void {
         // Arrange
-        $payload = backgroundedAgentDispatch('tdd-refactorer');
+        $payload = backgroundedAgentDispatch('lundflow:tdd-refactorer');
 
         // Act
         $output = runBackgroundGuardHook($payload);
@@ -131,7 +131,7 @@ describe('backgrounded guarded subagents', function (): void {
 
     it('denies a backgrounded review-fixer, naming the review-process phase it waits on', function (): void {
         // Arrange
-        $payload = backgroundedAgentDispatch('review-fixer');
+        $payload = backgroundedAgentDispatch('lundflow:review-fixer');
 
         // Act
         $output = runBackgroundGuardHook($payload);
@@ -168,11 +168,11 @@ describe('dispatches the guard lets through', function (): void {
     });
 
     it('allows an unguarded subagent dispatched backgrounded', function (): void {
-        // `/review:suite` backgrounds this one deliberately — it genuinely overlaps
-        // `/review:claude` running concurrently — so the guard must stay keyed on the
+        // `/lundflow:review:suite` backgrounds this one deliberately — it genuinely overlaps
+        // `/lundflow:review:claude` running concurrently — so the guard must stay keyed on the
         // gated set and never widen to "any backgrounded subagent".
         // Arrange
-        $payload = backgroundedAgentDispatch('coderabbit-reviewer');
+        $payload = backgroundedAgentDispatch('lundflow:coderabbit-reviewer');
 
         // Act
         $output = runBackgroundGuardHook($payload);
@@ -204,7 +204,7 @@ describe('dispatches the guard lets through', function (): void {
  * and no test in this file notices. So the committed settings file is read off
  * disk as its own seam.
  */
-describe('settings.json registration', function (): void {
+describe('hooks.json registration', function (): void {
     it('registers the guard as a PreToolUse hook on the Agent matcher', function (): void {
         // Arrange
         // the committed settings file is the input; there is no state to set up

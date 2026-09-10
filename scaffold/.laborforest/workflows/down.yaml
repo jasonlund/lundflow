@@ -8,19 +8,20 @@ steps:
   # so there is no Solo state for `down` to reverse.
   #
   # `up` copies the primary's .env verbatim and rewrites it four steps later, so
-  # an `up` that aborted in between leaves DB_DATABASE=lundflix and
-  # LF_SITE=lundflix-v2 in this worktree's .env — names the directory comparison
-  # below cannot see. LaborForest re-reads .env per step, so deriving here is
-  # what makes the {{ ENV_* }} in the steps below the workspace's own. Alone in
-  # this file it is not best-effort: if it fails the run must abort rather than
-  # tear down whatever the stale .env happens to name.
+  # an `up` that aborted in between leaves DB_DATABASE and LF_SITE naming the
+  # primary checkout's database and site in this worktree's .env — names the
+  # directory comparison below cannot see. LaborForest re-reads .env per step, so
+  # deriving here is what makes the {{ ENV_* }} in the steps below the workspace's
+  # own. Alone in this file it is not best-effort: if it fails the run must abort
+  # rather than tear down whatever the stale .env happens to name.
   #
   # The cost of that choice: this needs vendor/, so on a workspace whose vendor/
   # was deleted the run aborts here and neither step below is attempted — the
   # database and site are both orphaned and the workspace is stuck in `error`,
   # which only `override-workspace-status` clears. That is the cheaper failure.
   # Tolerating it instead would let the drop below run against a stale .env
-  # naming `lundflix`, and those 1.17M rows are not restorable from the dumps.
+  # naming the primary checkout's database, which nothing a worktree seeds from
+  # can restore.
   - name: 'Derive workspace env values'
     type: shell
     if: 'test "{{ WORKSPACE_DIR }}" != "{{ PROJECT_PRIMARY_DIR }}"'
@@ -33,7 +34,7 @@ steps:
   #
   # MYSQL_PWD, never `-p`: a flag would put the password in the process table.
   # Empty behaves as no password, which is why no --skip-password branch is
-  # needed. Matches App\Domains\Local\Database\MysqlConnection.
+  # needed.
   - name: 'Drop MySQL database'
     type: shell
     if: 'test "{{ WORKSPACE_DIR }}" != "{{ PROJECT_PRIMARY_DIR }}"'

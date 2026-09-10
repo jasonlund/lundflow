@@ -7,7 +7,7 @@ use Symfony\Component\Finder\Finder;
 use Tests\Support\ToolkitFiles;
 
 /**
- * Drift guard for the `.claude/` agent toolkit: the commit trailer it instructs
+ * Drift guard for the kit's plugins: the commit trailer it instructs
  * agents to write carries no model version stamp, and every review/hunter agent
  * pins the model its review phase is meant to run on.
  *
@@ -16,7 +16,7 @@ use Tests\Support\ToolkitFiles;
  *
  * NB: the offending trailer shape lives in a PHP string literal (never in a `//`
  * comment) so widening the scan can never make this file its own offender; the
- * scan is scoped strictly to `.claude/` for the same reason.
+ * scan is scoped strictly to `plugins/` for the same reason.
  */
 
 /**
@@ -39,8 +39,8 @@ $declaredModel = function (string $agent): ?string {
     return null;
 };
 
-describe('.claude/ toolkit commit trailers', function (): void {
-    it('carries no model-stamped co-author trailer anywhere under .claude/', function (): void {
+describe('plugin commit trailers', function (): void {
+    it('carries no model-stamped co-author trailer anywhere under plugins/', function (): void {
         // The bare `Co-Authored-By: Claude <noreply@anthropic.com>` is the
         // drift-free form we want; anything wedged between the name and the address
         // is a version stamp that rots the moment the model changes. Matched
@@ -139,7 +139,7 @@ describe('agent frontmatter model pinning', function () use ($declaredModel): vo
     it('declares a permitted model on every agent file, including ones added later', function () use ($declaredModel): void {
         // The tests above name today's agents, so a *newly added* agent file is
         // guarded by nothing. This sweeps the directory instead: rules 1–3 of Model
-        // Selection in `.claude/skills/review-pipeline/SKILL.md` admit these three
+        // Selection in `plugins/lundflow/skills/review-pipeline/SKILL.md` admit these three
         // values and no others, and rule 2 bars a dated model id outright.
         // A missing `model:` key is an offender too, not an exemption — an unpinned
         // agent silently takes the harness default, which is the drift the policy

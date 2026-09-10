@@ -9,17 +9,19 @@ description: >-
 
 # React + Inertia testing conventions
 
-> Stack: React 19 + `@inertiajs/react` ^3, Vite 8, npm. Toolchain is **installed
-> and wired**: Vitest 4 + React Testing Library + jest-dom + user-event + jsdom,
-> `test` block in `vite.config.ts` (`environment: 'jsdom'`, `globals: true`,
-> `setupFiles: ['resources/js/test/setup.ts']`), and `npm test` / `npm run
-> test:watch` scripts. `globals` + jest-dom types are registered in `tsconfig.json`.
+> Stack: React 19 + `@inertiajs/react` ^3, Vite 8, npm. Expected toolchain:
+> Vitest 4 + React Testing Library + jest-dom + user-event + jsdom, a `test` block
+> in `vite.config.ts` (`environment: 'jsdom'`, `globals: true`,
+> `setupFiles: ['resources/js/test/setup.ts']`), `npm test` / `npm run
+> test:watch` scripts, and `globals` + jest-dom types registered in `tsconfig.json`.
 
 ## Runner & commands
 
 - **Vitest** + **React Testing Library** + `@testing-library/jest-dom` +
   `@testing-library/user-event`.
-- Run one test file: `npx vitest run resources/js/pages/movies/Index.test.tsx`
+- The project's own commands are the *Frontend test (filtered)* and *Frontend test
+  (full)* settings — use them where they differ from the defaults below.
+- Run one test file: `npx vitest run resources/js/pages/orders/Index.test.tsx`
 - Watch a single file while iterating: `npx vitest resources/js/.../X.test.tsx`
 - Whole suite: `npm test`.
 - Run the slice under work during a TDD cycle; run the broader suite before
@@ -44,23 +46,23 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Index from './Index'
 
-describe('movie index page', () => {
-  it('shows the movies returned by the server', () => {
+describe('order index page', () => {
+  it('shows the orders returned by the server', () => {
     // Arrange
-    const movies = [{ id: 1, title: 'Heat' }]
+    const orders = [{ id: 1, reference: 'ORD-1001' }]
 
     // Act
-    render(<Index movies={movies} />)
+    render(<Index orders={orders} />)
 
     // Assert
-    expect(screen.getByRole('heading', { name: /heat/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /ord-1001/i })).toBeInTheDocument()
   })
 })
 ```
 
 - **Query by role/text/label**, not test IDs or class names. Use `findBy*` for
   async UI.
-- **Name tests for WHAT, not HOW** — `test('shows an error when the title is
+- **Name tests for WHAT, not HOW** — `test('shows an error when the reference is
   blank')`, not `test('calls setError')`.
 - **Never tautological.** The expected value must not be recomputed the way the
   component computes it. Deriving the expected text from the same props with the
@@ -68,10 +70,10 @@ describe('movie index page', () => {
 
   ```tsx
   // BAD — recomputes the component's own formatting
-  expect(screen.getByText(`${movie.title} (${movie.year})`)).toBeInTheDocument()
+  expect(screen.getByText(`${order.reference} (${order.status})`)).toBeInTheDocument()
 
   // GOOD — an independent literal
-  expect(screen.getByText('Heat (1995)')).toBeInTheDocument()
+  expect(screen.getByText('ORD-1001 (paid)')).toBeInTheDocument()
   ```
 - Drive interaction with `userEvent` (`await userEvent.click(...)`), not `fireEvent`.
 - Mock Inertia where components call it: stub `@inertiajs/react`'s `router`,
@@ -84,9 +86,8 @@ when one of them rejects a test.
 
 ## Test-comment standard (strict)
 
-Test comments are **deliberate and mandatory** — one canonical form, strictly
-enforced (the Pest guard `tests/Unit/TestCommentStandardTest.php` scans
-`resources/js` too):
+Test comments are **deliberate and mandatory** — one canonical form, the same one
+the Pest suite holds:
 
 1. **AAA labels mandatory, one per block, label-only line.** `// Arrange`,
    `// Act`, `// Assert` — each alone on its line, no prose appended.
@@ -105,10 +106,8 @@ enforced (the Pest guard `tests/Unit/TestCommentStandardTest.php` scans
 
 ## Test-organization standard (strict)
 
-The same standard the Pest suite follows — the guard
-`tests/Unit/TestOrganizationStandardTest.php` scans `resources/js/**/*.test.ts(x)`
-too, applying the grouping and description-form checks, which key off
-`describe(`/`it(` and so read identically in both languages:
+The same standard the Pest suite follows. Its grouping and description-form rules
+key off `describe(`/`it(`, so they read identically in both languages:
 
 - **Every `it()`/`test()` lives inside a `describe()`.** Several top-level
   describes per file are fine; nesting allowed. Never a top-level test.
@@ -117,13 +116,13 @@ too, applying the grouping and description-form checks, which key off
 - **Describe labels are unique within a file** — no two `describe()` blocks in
   one file may share a label, at any nesting level.
 
-Judgment rules, not machine-checked: label a describe by **subject + facet**
+Judgment rules, not machine-checkable: label a describe by **subject + facet**
 (`describe('Login page', …)`, `describe('submit handler', …)`), put the happy path
 first and failures last, and prefer a per-`describe` `beforeEach` over repeating
 the same arrange in every test of that group. The skeleton-order and helper-name
-checks are PHP-only and don't apply here.
+rules are PHP-only and don't apply here.
 
-## RED checklist (for tdd-test-writer)
+## RED checklist (for `lundflow:tdd-test-writer`)
 
 - A small cohesive set (2–6) of failing tests for one behavior slice; each describes
   one user-observable behavior (something rendered, or a reaction to interaction).
@@ -131,7 +130,7 @@ checks are PHP-only and don't apply here.
 - Run it; it must fail on the **assertion** (element/behavior absent), not on a
   render crash from an unrelated missing mock.
 
-## REFACTOR targets (for tdd-refactorer)
+## REFACTOR targets (for `lundflow:tdd-refactorer`)
 
 - Extract repeated logic into **hooks** (`useX`) and repeated markup into
   **components**.

@@ -9,7 +9,7 @@ signal, not about "docblocks are bad."
 
 **Before**
 ```php
-// SyncCatalog
+// SyncOrders
 /**
  * Execute the console command.
  *
@@ -17,37 +17,37 @@ signal, not about "docblocks are bad."
  */
 public function handle(): int
 
-// UpdateImdbRatings
+// UpdateInvoiceTotals
 /**
- * Apply the supplied ratings to one table in a single bulk CASE update.
+ * Apply the supplied totals to one table in a single bulk CASE update.
  *
- * @param  Builder<Movie>|Builder<Show>  $query
- * @param  array<string, array{num_votes: int, average_rating: float}>  $ratings
+ * @param  Builder<Invoice>|Builder<CreditNote>  $query
+ * @param  array<string, array{subtotal: int, tax_rate: float}>  $totals
  */
-public function handle(Builder $query, array $ratings): int
+public function handle(Builder $query, array $totals): int
 ```
 
 **After**
 ```php
-// SyncCatalog
+// SyncOrders
 public function handle(): int
 
-// UpdateImdbRatings
+// UpdateInvoiceTotals
 /**
- * Apply the supplied ratings to one table in a single bulk CASE update.
+ * Apply the supplied totals to one table in a single bulk CASE update.
  *
- * @param  Builder<Movie>|Builder<Show>  $query
- * @param  array<string, array{num_votes: int, average_rating: float}>  $ratings
+ * @param  Builder<Invoice>|Builder<CreditNote>  $query
+ * @param  array<string, array{subtotal: int, tax_rate: float}>  $totals
  */
-public function handle(Builder $query, array $ratings): int
+public function handle(Builder $query, array $totals): int
 ```
 
-- `SyncCatalog::handle(): int` → **cut**. "Execute the console command." restates
+- `SyncOrders::handle(): int` → **cut**. "Execute the console command." restates
   the method name, and `@return int` just repeats the native `: int` return type.
   Both lines add nothing past the signature — pure boilerplate.
-- `UpdateImdbRatings::handle(...)` → **keep**. `Builder<Movie>|Builder<Show>` and the
-  `array{...}` shape are type info PHP can't express natively — Larastan and the
-  IDE depend on it. The summary line earns its place by naming the *non-obvious*
+- `UpdateInvoiceTotals::handle(...)` → **keep**. `Builder<Invoice>|Builder<CreditNote>`
+  and the `array{...}` shape are type info PHP can't express natively — Larastan and
+  the IDE depend on it. The summary line earns its place by naming the *non-obvious*
   mechanism ("single bulk CASE update"), not by restating `handle`.
 
 ## 2. Instruction file — high-signal lines + reorder

@@ -1,13 +1,12 @@
 ---
-name: review:debrief
 description: Debrief on the branch that was just built — diffs it, summarizes in plain language what the PR does, checks it against the Linear ticket flagging any deviation from scope, and hands the author the Linear diff link to review.
 ---
 
 # Review Debrief
 
 You are running the **debrief** stage of the review loop:
-`/review:create-pr` → **`/review:debrief`** → `/review:human` → `/review:suite`
-(or `/review:claude`) → `/review:add` → `/review:process`.
+`/lundflow:review:create-pr` → **`/lundflow:review:debrief`** → `/lundflow:review:human` → `/lundflow:review:suite`
+(or `/lundflow:review:claude`) → `/lundflow:review:add` → `/lundflow:review:process`.
 
 The branch is already built when you run, so this is a debrief and not a brief:
 you account for work that happened, then hand the author the diff to read.
@@ -25,17 +24,17 @@ is a debrief, not a `=== FINDING ===` report.
 
 ## Input
 - **PR number** — positional arg, or auto-detected from the current branch.
-- **Ticket ID** — `FLIX-XXX`, positional arg, or extracted from the branch / PR
-  title.
+- **Ticket ID** — `{PREFIX}-XXX`, where `{PREFIX}` is the *Ticket prefix* setting;
+  positional arg, or extracted from the branch / PR title.
 
 Both are optional when the branch has an open PR. See Phase 0.
 
 ## Example Invocation
 ```
-/review:debrief                 # auto-detect PR + ticket from branch
-/review:debrief 205             # explicit PR, auto-detect ticket
-/review:debrief FLIX-205        # auto-detect PR, explicit ticket
-/review:debrief 205 FLIX-205    # explicit both
+/lundflow:review:debrief                     # auto-detect PR + ticket from branch
+/lundflow:review:debrief 205                 # explicit PR, auto-detect ticket
+/lundflow:review:debrief {PREFIX}-205        # auto-detect PR, explicit ticket
+/lundflow:review:debrief 205 {PREFIX}-205    # explicit both
 ```
 
 ---
@@ -43,9 +42,9 @@ Both are optional when the branch has an open PR. See Phase 0.
 ## Phase 0: Resolve PR + Ticket
 
 1. **PR number** — if not passed, follow **PR Number Auto-Extraction** in
-   `.claude/skills/review-pipeline/SKILL.md`. A PR is **not required** — if none
+   `${CLAUDE_PLUGIN_ROOT}/skills/review-pipeline/SKILL.md`. A PR is **not required** — if none
    exists, fall back to the local branch (`git diff origin/main...HEAD`) and note
-   in the report that there's no open PR yet (suggest `/review:create-pr`).
+   in the report that there's no open PR yet (suggest `/lundflow:review:create-pr`).
 2. **Ticket ID** — if not passed, follow **Ticket ID Auto-Extraction** in the same
    contract (branch name → PR title → null). If null, run the summary anyway and
    state plainly that ticket-alignment is **skipped** — there's nothing to check
@@ -55,7 +54,7 @@ Both are optional when the branch has an open PR. See Phase 0.
 
 ## Phase 1: Gather the Change
 
-Ground the readout in the same three sources `/review:create-pr` uses — **read them, do
+Ground the readout in the same three sources `/lundflow:review:create-pr` uses — **read them, do
 not guess**:
 
 | Source | Supplies | How |
@@ -127,18 +126,18 @@ posted):
 
 ## Before you read the diff
 - {deviations/gaps to reconcile on the ticket, if any}
-- {anything that looked off but isn't defect-hunting — that's /review:suite's job}
+- {anything that looked off but isn't defect-hunting — that's /lundflow:review:suite's job}
 
 Diff: https://linear.review/{owner}/{repo}/pull/{n}
 
-Next: /review:human
+Next: /lundflow:review:human
 ```
 
-The diff link is the handoff — `/review:human` reviews the branch in Linear, and
+The diff link is the handoff — `/lundflow:review:human` reviews the branch in Linear, and
 resolves the pieces the link needs again when it runs on its own. Build it from the
 repo's `owner/name` (`gh repo view --json nameWithOwner -q '.nameWithOwner'`) and
 the `{n}` Phase 0 already resolved. Drop the line when no PR is open — there is no
-diff to open in Linear yet — and say `/review:create-pr` first instead.
+diff to open in Linear yet — and say `/lundflow:review:create-pr` first instead.
 
 If there are no deviations and no gaps, say so in one line — a clean
 ticket-to-diff match is the good outcome, not a reason to manufacture concerns.
@@ -146,7 +145,7 @@ ticket-to-diff match is the good outcome, not a reason to manufacture concerns.
 ## Notes
 - **Human-facing only.** No GitHub posting, no linters, no reviewer subagents,
   no commits — this stage informs, the later stages act.
-- **Don't defect-hunt.** Correctness/edge-case/convention review is `/review:suite`'s
+- **Don't defect-hunt.** Correctness/edge-case/convention review is `/lundflow:review:suite`'s
   job. Staying in your lane keeps this stage fast and cheap. If something genuinely
   alarming jumps out, mention it in one line and defer to the review engines.
 - **Ground everything** in the diff, commits, and ticket — never describe work the

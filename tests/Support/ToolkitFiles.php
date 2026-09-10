@@ -47,6 +47,14 @@ final readonly class ToolkitFiles
     }
 
     /**
+     * A repo-relative path, from an absolute one inside the repo.
+     */
+    public static function relative(string $absolute): string
+    {
+        return Str::after($absolute, self::path().'/');
+    }
+
+    /**
      * A source split into its lines.
      *
      * Split on real newlines only, NOT `\R`: without the `u` modifier PCRE
@@ -174,45 +182,33 @@ final readonly class ToolkitFiles
     /**
      * The slash command a plugin's command file is addressed as.
      *
-     * The harness names a plugin command `<plugin>:<path>` and ignores its
-     * front-matter `name:`. Transitional: the kit's own `lundflow` plugin drops
-     * that prefix here, because every front matter and body still names its
-     * commands the way lundflix's project-local `.claude/commands/` did
-     * (`review:claude`). Once the rename lands, every plugin gets its prefix.
+     * The harness names a plugin command `<plugin>:<path>` and ignores any
+     * front-matter `name:` — `commands/review/claude.md` in plugin `lundflow`
+     * runs as `/lundflow:review:claude`.
      */
     public static function commandAddress(string $plugin, string $path): string
     {
-        $address = Str::replace('/', ':', $path);
-
-        return $plugin === 'lundflow' ? $address : $plugin.':'.$address;
+        return $plugin.':'.Str::replace('/', ':', $path);
     }
 
     /**
-     * Where the kit ships a file the toolkit's prose names by its lundflix-era,
-     * project-local path — or null when the kit ships no such file.
+     * The kit file a path in plugin prose resolves to, or null when it resolves to
+     * nothing the kit ships.
      *
-     * Transitional. The prose was moved verbatim, so it still points agents at
-     * `.claude/skills/…` and `.ai/guidelines/project.md`, while an installed
-     * plugin lives in the plugin cache rather than the consumer's `.claude/`. Each
-     * arm is one class of reference the rename still has to rewrite; the rename is
-     * done when this method can be deleted.
+     * `${CLAUDE_PLUGIN_ROOT}` expands to the citing file's own plugin — never a
+     * sibling — so it resolves inside that plugin. `.ai/…` and `docs/…` name files
+     * the consuming project owns, which the kit provides through `scaffold/`. A
+     * `.claude/…` path resolves to nothing: an installed plugin lives in the plugin
+     * cache, so no kit file is ever at the project's `.claude/`.
      */
-    public static function legacyReference(string $path): ?string
+    public static function resolveReference(string $citingFile, string $path): ?string
     {
-        $candidates = match (true) {
-            $path === '.claude/settings.json' => ['plugins/lundflow/hooks/hooks.json'],
-            $path === '.ai/guidelines/project.md' => ['scaffold/.ai/guidelines/lundflow.md'],
-            Str::startsWith($path, '.claude/commands/') => [
-                'plugins/lundflow/commands/'.Str::after($path, '.claude/commands/'),
-                Str::replaceMatches('#^\.claude/commands/([^/]+)/#', 'plugins/$1/commands/', $path),
-            ],
-            Str::startsWith($path, '.claude/') => collect(glob(self::path('plugins/*/'.Str::after($path, '.claude/'))) ?: [])
-                ->map(fn (string $absolute): string => Str::after($absolute, self::path().'/'))
-                ->all(),
-            Str::startsWith($path, 'docs/agents/') => ['scaffold/'.$path],
-            default => [$path],
+        $candidate = match (true) {
+            Str::startsWith($path, '${CLAUDE_PLUGIN_ROOT}/') => 'plugins/'.Str::betweenFirst($citingFile, 'plugins/', '/').'/'.Str::after($path, '${CLAUDE_PLUGIN_ROOT}/'),
+            Str::startsWith($path, ['.ai/', 'docs/']) => 'scaffold/'.$path,
+            default => null,
         };
 
-        return collect($candidates)->first(fn (string $candidate): bool => file_exists(self::path($candidate)));
+        return $candidate !== null && file_exists(self::path($candidate)) ? $candidate : null;
     }
 }

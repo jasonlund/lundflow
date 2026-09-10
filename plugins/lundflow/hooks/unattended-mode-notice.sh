@@ -37,7 +37,7 @@ MODE="$(printf '%s' "$INPUT" | jq -re 'if type != "object" then empty else (.per
 
 cat <<'EOF'
 [unattended-mode] permission_mode=bypassPermissions — this session runs unattended.
-Three ask-a-human approval gates, and only these three, do NOT apply: the `tdd` Step 1
+Three ask-a-human approval gates, and only these three, do NOT apply: the `lundflow:tdd` Step 1
 RED plan card, tdd-feedback's route confirmation, review-tdd-cross-slice's sweep
 approval. Write the contract to chat and proceed. The planning skills (plan-draft,
 plan-breakdown, plan-slices) stay gated — the interview is the work. Every correctness

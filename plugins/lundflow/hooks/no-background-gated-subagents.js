@@ -9,11 +9,14 @@
 //
 // Add a row whenever a new subagent is dispatched in front of a blocking gate;
 // an unlisted subagent_type is allowed through untouched.
+//
+// Keyed by the bare agent name. A plugin agent reaches this hook as
+// `lundflow:tdd-test-writer`, so the plugin prefix is stripped before the lookup.
 const GATED_SUBAGENTS = {
-  "tdd-test-writer": "the RED gate (`tdd` Step 1)",
-  "tdd-implementer": "the GREEN gate (`tdd` Step 2)",
-  "tdd-refactorer": "the REFACTOR gate (`tdd` Step 3)",
-  "review-fixer": "`/review:process` Phase 3",
+  "tdd-test-writer": "the RED gate (`lundflow:tdd` Step 1)",
+  "tdd-implementer": "the GREEN gate (`lundflow:tdd` Step 2)",
+  "tdd-refactorer": "the REFACTOR gate (`lundflow:tdd` Step 3)",
+  "review-fixer": "`/lundflow:review:process` Phase 3",
 };
 
 let raw = "";
@@ -31,8 +34,9 @@ process.stdin.on("data", (chunk) => (raw += chunk)).on("end", () => {
   // Own properties only: a bare index inherits Object.prototype, so a
   // subagent_type of "constructor"/"toString"/"valueOf" would resolve truthy and
   // deny a dispatch that is not in the guarded set at all.
-  const gate = Object.hasOwn(GATED_SUBAGENTS, input.subagent_type)
-    ? GATED_SUBAGENTS[input.subagent_type]
+  const name = String(input.subagent_type ?? "").split(":").pop();
+  const gate = Object.hasOwn(GATED_SUBAGENTS, name)
+    ? GATED_SUBAGENTS[name]
     : undefined;
 
   if (gate && input.run_in_background === true) {

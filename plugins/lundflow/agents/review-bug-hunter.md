@@ -7,7 +7,7 @@ model: inherit
 
 # Bug Hunter
 
-You find bugs in what this PR changed, for `/review:claude` Phase 3. Two of you run
+You find bugs in what this PR changed, for `/lundflow:review:claude` Phase 3. Two of you run
 in parallel on the same brief; the orchestrator merges what you both find.
 
 `inherit`, so you run on the session's model: finding a real defect is the hardest
@@ -17,13 +17,13 @@ judgement in this pipeline, and it is the one place worth the strongest model.
 
 `PR_SUMMARY`, `GUIDELINE_PATHS`, `PR_DIFF`, and the finding format, severity
 definitions and Simplified Technical English rules in
-`.claude/skills/review-pipeline/SKILL.md`.
+`${CLAUDE_PLUGIN_ROOT}/skills/review-pipeline/SKILL.md`.
 
 ## DIFF-LOCAL
 
 Flag what the diff alone proves. An issue you cannot establish from the changed
 lines and their immediate surroundings belongs to a reviewer with wider scope —
-CodeRabbit covers that breadth in `/review:suite`.
+CodeRabbit covers that breadth in `/lundflow:review:suite`.
 
 This bound is what makes the pipeline affordable: every finding you emit costs a
 validator call, so an unbounded hunt for cross-file possibilities spends the budget
@@ -52,8 +52,9 @@ collector catches at line 42 and returns `[]`"* clears the bar. *"This may misbe
 under load"* names no state and no line, so it is speculation.
 
 Stay silent on everything else: style, naming, quality, speculation, anything a
-Pint/Rector/Pest/ESLint/Vitest gate already owns, a pre-existing issue in untouched
-code, and anything under a lint-ignore comment.
+`/lundflow:review:claude` Phase 1 gate (the finalize gates and test suites) already
+owns, a pre-existing issue in untouched code, and anything under a lint-ignore
+comment.
 
 **Uncertain an issue is real → stay silent.** Reviewers are wrong on roughly one
 comment in three, and a wrong comment costs more trust than a missed nit.

@@ -6,7 +6,7 @@ use Symfony\Component\Process\Process;
 use Tests\Support\ToolkitFiles;
 
 /**
- * Reachability guard for the `/`-command surface under `.claude/commands/`.
+ * Reachability guard for the `/`-command surface under each plugin's `commands/`.
  *
  * A command is prose the harness loads by name, so every way it can fail to
  * reach a reader is silent. It can be untracked — working perfectly for its
@@ -95,22 +95,22 @@ describe('command version control', function () use ($newlyCommittedCommandPaths
 });
 
 describe('command front matter', function () use ($scanCommands): void {
-    it('declares a front-matter name matching the slash command its path addresses', function () use ($scanCommands): void {
-        // Nothing in the toolchain reconciles the two, so a moved or renamed file
-        // keeps loading under its new path while describing itself under the old
-        // name — and the mismatch surfaces only to whoever reads the wrong one.
+    it('declares no front-matter name, leaving the path as the only name', function () use ($scanCommands): void {
+        // The harness addresses a plugin command by `<plugin>:<path>` and ignores
+        // `name:`, so a declared name can only drift from the address — and it
+        // would read as authoritative to anyone who opened the file.
         // Arrange
         $commands = $scanCommands();
 
         // Act
-        $mismatched = collect($commands)
-            ->reject(fn (array $c): bool => $c['declared'] === $c['command'])
-            ->map(fn (array $c): string => sprintf('%s declares "%s", expected "%s"', $c['path'], $c['declared'] ?? '<none>', $c['command']))
+        $named = collect($commands)
+            ->reject(fn (array $c): bool => $c['declared'] === null)
+            ->map(fn (array $c): string => sprintf('%s declares "%s"; it runs as /%s', $c['path'], $c['declared'], $c['command']))
             ->values()
             ->all();
 
         // Assert
-        expect($mismatched)->toBe([])
+        expect($named)->toBe([])
             ->and($commands)->not->toBeEmpty()
             ->and(count($commands))->toBeGreaterThan(5);
     });

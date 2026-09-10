@@ -15,11 +15,11 @@ use Tests\Support\ToolkitFiles;
  * was supposed to read. Nothing else in the suite can see that.
  *
  * The scan root is `plugins/` — that is where the routing prose lives — but the
- * *targets* it checks are wider: a skill naming `.ai/guidelines/project.md` or
+ * *targets* it checks are wider: a skill naming `.ai/guidelines/lundflow-workflow.md` or
  * `docs/agents/domain.md` dangles exactly as loudly as one naming a sibling
- * skill, so every prefix the toolkit points at is checked. The prose still names
- * targets by their lundflix-era project-local paths, so each resolves through
- * `ToolkitFiles::legacyReference()` until the rename rewrites them.
+ * skill, so every prefix the toolkit points at is checked. Resolution follows where
+ * an installed plugin's reader would actually look — `ToolkitFiles::resolveReference()`
+ * carries the rules, and a `.claude/…` path never resolves.
  *
  * Scope limit, deliberate: this guard answers `file_exists` and nothing more, so
  * it catches a path that stopped resolving, never a pointer that dangles on
@@ -34,7 +34,7 @@ use Tests\Support\ToolkitFiles;
  */
 
 /**
- * Every `.claude/…`, `.ai/…` or `docs/…` path referenced in the toolkit's
+ * Every `${CLAUDE_PLUGIN_ROOT}/…`, `.claude/…`, `.ai/…` or `docs/…` path referenced in the toolkit's
  * markdown, paired with where it was referenced from.
  *
  * @return list<array{file: string, line: int, path: string}>
@@ -66,7 +66,7 @@ $scanReferences = function (): array {
             //     (`app/Domains/{Domain}/…`, `docs/agents/*.md`) never match.
             // A file is what an agent actually loads, so a file is what drifts
             // silently — a bare directory mention has no load to fail.
-            preg_match_all('#(?<![~/\w])(?:\.claude|\.ai|docs)/[A-Za-z0-9._\-/]+\.[A-Za-z0-9]{2,4}\b#', $text, $matches);
+            preg_match_all('#(?<![~/\w])(?:\$\{CLAUDE_PLUGIN_ROOT\}|\.claude|\.ai|docs)/[A-Za-z0-9._\-/]+\.[A-Za-z0-9]{2,4}\b#', $text, $matches);
 
             foreach ($matches[0] as $path) {
                 $references[] = [
@@ -88,7 +88,7 @@ describe('toolkit reference graph', function () use ($scanReferences): void {
 
         // Act
         $dangling = collect($references)
-            ->reject(fn (array $r): bool => ToolkitFiles::legacyReference($r['path']) !== null)
+            ->reject(fn (array $r): bool => ToolkitFiles::resolveReference($r['file'], $r['path']) !== null)
             ->map(fn (array $r): string => sprintf('%s:%d  →  %s', $r['file'], $r['line'], $r['path']))
             ->unique()
             ->values()

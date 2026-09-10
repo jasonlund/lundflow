@@ -1,13 +1,12 @@
 ---
-name: review:human
-description: The human read of the branch — resolves the PR, prints the Linear diff link, waits while a person reads the diff and submits their review, then hands the submitted comments to /review:process --human-round.
+description: The human read of the branch — resolves the PR, prints the Linear diff link, waits while a person reads the diff and submits their review, then hands the submitted comments to /lundflow:review:process --human-round.
 ---
 
 # Human Review
 
 You are running the **human** stage of the review loop:
-`/review:create-pr` → `/review:debrief` → **`/review:human`** → `/review:suite`
-(or `/review:claude`) → `/review:add` → `/review:process`.
+`/lundflow:review:create-pr` → `/lundflow:review:debrief` → **`/lundflow:review:human`** → `/lundflow:review:suite`
+(or `/lundflow:review:claude`) → `/lundflow:review:add` → `/lundflow:review:process`.
 
 The person reads the branch **before** the machines do. A reader who has already
 seen fifteen machine findings checks their work instead of forming their own
@@ -27,8 +26,8 @@ yourself. You print the link, you wait, and you hand back what comes in.
 ## Example Invocation
 
 ```
-/review:human        # auto-detect the PR from the current branch
-/review:human 205    # explicit PR
+/lundflow:review:human        # auto-detect the PR from the current branch
+/lundflow:review:human 205    # explicit PR
 ```
 
 ---
@@ -36,13 +35,13 @@ yourself. You print the link, you wait, and you hand back what comes in.
 ## Phase 0: Resolve the PR and the Repo
 
 1. **PR number** — if not passed, follow **PR Number Auto-Extraction** in
-   `.claude/skills/review-pipeline/SKILL.md`. With no PR found, HALT and tell the
-   user to run `/review:create-pr` first: there is no diff to open in Linear
+   `${CLAUDE_PLUGIN_ROOT}/skills/review-pipeline/SKILL.md`. With no PR found, HALT and tell the
+   user to run `/lundflow:review:create-pr` first: there is no diff to open in Linear
    until a PR is open.
 2. **Repo** — `{owner}/{repo}` from
    `gh repo view --json nameWithOwner -q '.nameWithOwner'`.
 
-Resolve both here rather than assuming `/review:debrief` ran. This command is
+Resolve both here rather than assuming `/lundflow:review:debrief` ran. This command is
 invoked on its own as often as it runs in the chain, and a link built from a
 stale hand-off points at the wrong PR.
 
@@ -75,7 +74,7 @@ submitted (or that there was nothing to say).
 ## Phase 2: Ingest the Submitted Review
 
 The submitted comments now sit on the PR as ordinary human feedback, so there is
-no new ingest path to write. Delegate to `/review:process --human-round`, with
+no new ingest path to write. Delegate to `/lundflow:review:process --human-round`, with
 the PR number Phase 0 resolved.
 
 That command owns the mechanics — collection, triage, the numbered gate, the
@@ -91,14 +90,14 @@ than sliding on to the engines as though there were no feedback:
   syncs to GitHub, so the pipeline cannot see it and the PR carries nothing to
   collect — the comments are on screen in Linear and nowhere else.
 - **The points went into the review body.** The collector reads a review body for
-  `/review:add`-shaped findings alone, so prose there yields no items. The review
+  `/lundflow:review:add`-shaped findings alone, so prose there yields no items. The review
   synced and the summary stayed behind.
 - **There was nothing to flag.** A legitimate outcome, and the good one. A clean
   read is a result, not a failure to find something.
 
 This stage cannot tell them apart, so say all three and offer the choice: re-check
 the PR after the reader submits, or accept the clean read and move on to
-`/review:suite`.
+`/lundflow:review:suite`.
 
 ## Notes
 
@@ -108,8 +107,8 @@ the PR after the reader submits, or accept the clean read and move on to
   only one — Phase 2 carries all three, and reporting the draft as the whole
   explanation sends the reviewer back to a review that already synced. Say it
   before the wait and again after a zero-item ingest.
-- **Read nothing for them.** Summarizing the branch is `/review:debrief`'s job,
-  and defect-hunting is `/review:suite`'s. Staying in your lane keeps this stage
+- **Read nothing for them.** Summarizing the branch is `/lundflow:review:debrief`'s job,
+  and defect-hunting is `/lundflow:review:suite`'s. Staying in your lane keeps this stage
   a link, a wait, and a hand-off.
 - **Never continue through the gate on your own.** The whole value of the stage
   is a human view formed before the machines speak.

@@ -8,16 +8,16 @@ description: >-
   can be decomposed or sliced. Also runs in synthesis mode — on explicit request —
   to assemble the plan from a conversation that already settled the decisions.
   Architecture/files/decisions only: zero TDD concern, zero ticket-splitting. The
-  front-most of the three planning skills; its output feeds `plan-breakdown` or
-  `plan-slices`.
+  front-most of the three planning skills; its output feeds `lundflow:plan-breakdown` or
+  `lundflow:plan-slices`.
 ---
 
 # Plan Draft
 
-A rough ticket is a **wishlist, not a plan** — "add episode/season models",
-"sync command to keep shows up to date" (FLIX-197) names outcomes but pins no
-decisions. The two downstream skills both assume the concrete plan already exists:
-`plan-breakdown` decomposes *a written PRD/plan*, and `plan-slices` slices *a finished
+A rough ticket is a **wishlist, not a plan** — "add invoice and line-item models",
+"sync command to keep orders up to date" names outcomes but pins no decisions. The
+two downstream skills both assume the concrete plan already exists:
+`lundflow:plan-breakdown` decomposes *a written PRD/plan*, and `lundflow:plan-slices` slices *a finished
 plan written with zero TDD concern*. Feed a rough ticket straight into either and
 you get garbage — there is nothing concrete to partition or slice.
 
@@ -39,10 +39,10 @@ rough ticket ─plan-draft▶ concrete plan (replaces ticket body)
   **explicitly confirms**. Architecture, target files/domains, data shapes, locked
   decisions, open risks. (One exception: **synthesis mode**, below.)
 - **IS NOT** a TDD planner. Never mention slices, tests, RED/GREEN, or testability
-  seams — that is `plan-slices`'s whole job, and it *expects* a plan written with zero
+  seams — that is `lundflow:plan-slices`'s whole job, and it *expects* a plan written with zero
   TDD concern as its input. Stay silent on testing.
 - **IS NOT** a decomposer. Never split into sub-tickets, create Linear tickets,
-  build a wave/dependency graph, or assign branches — that is `plan-breakdown`
+  build a wave/dependency graph, or assign branches — that is `lundflow:plan-breakdown`
   Phase B–D. You produce **one** plan for **one** ticket.
 - **IS NOT** an executor. No code, no scaffolding, no `make:*`. Stop at the plan.
 
@@ -54,9 +54,9 @@ plan full of assumptions is worse than the rough ticket — it launders guesses 
 settled intent. When unsure, ask.
 
 **Facts are your job, never the user's.** When a decision needs a fact from the
-environment — what an endpoint returns, what a column already holds, how V1 did it
-— go find it. Only put the *decision* to the user. Asking them to look something
-up you could read yourself wastes the one thing the interview is for.
+environment — what an endpoint returns, what a column already holds, how a prior
+version did it — go find it. Only put the *decision* to the user. Asking them to
+look something up you could read yourself wastes the one thing the interview is for.
 
 ## Two modes
 
@@ -80,16 +80,15 @@ misread.
 - **Resolve the ticket.** Default input is a Linear ticket id; read its current
   body via the `linear-server` MCP. If the input is unclear, prompt — don't guess.
 - **Load the binding constraints** so the plan is DDD-shaped from the first draft:
-  `CLAUDE.md` / `.ai/guidelines/project.md` (domain layout `app/Domains/*`,
+  `CLAUDE.md` — the project's conventions (domain layout `app/Domains/*`,
   Action/exception naming, service constants, cross-domain only via `Contracts/`,
-  the raw-source `_{source}_{rawAttr}` column convention).
+  any column-naming convention).
 - **Read the ground truth before proposing anything** (standing lessons):
-  - **Read referenced/V1 implementations** the ticket points at — never plan a
+  - **Read referenced/prior implementations** the ticket points at — never plan a
     feature blind when prior code exists.
   - **Inspect the real data/source payloads** the feature consumes before designing
     columns or shapes — fixtures and schemas mirror byte-exact reality, not a guess
-    at it. (e.g. hit the real TVDB episodes/seasons response before choosing model
-    columns.)
+    at it. (e.g. hit the real upstream response before choosing model columns.)
 - **Read the domain glossary** — `CONTEXT.md` and any `docs/adr/` entries touching
   this area (`docs/agents/domain.md`). Name concepts the way the glossary names
   them, and if the plan contradicts an ADR, **say so explicitly** rather than
@@ -100,14 +99,15 @@ misread.
 ## Phase B — Surface the open decisions (gap analysis)
 
 The core analysis. Read each rough bullet and expand it into the **concrete
-decisions it silently defers**. Do not answer them yet — enumerate them. For
-FLIX-197 the bullets "get episodes / create models / seed service / sync command"
-hide, e.g.:
+decisions it silently defers**. Do not answer them yet — enumerate them. For a
+ticket whose bullets read "fetch orders / create models / import service / sync
+command", they hide, e.g.:
 
-- Which exact TVDB endpoints; are seasons a separate call or embedded in episodes?
-- Season as its own model+table or a column on episodes?
-- Each model's columns, casts, keys, relationships, and raw-source columns.
-- The seed service's method signatures and where it lives (`Contracts/` vs internal).
+- Which exact upstream endpoints; are line items a separate call or embedded in orders?
+- Line item as its own model+table or a column on orders?
+- Each model's columns, casts, keys, relationships, and which columns mirror the
+  upstream payload.
+- The import service's method signatures and where it lives (`Contracts/` vs internal).
 - Sync trigger, cadence, idempotency, and what "most recent" means.
 
 Group the gaps into **coherent decision clusters** (one workstream each) so they
@@ -119,7 +119,7 @@ Walk the clusters **one at a time** — phased approval, one workstream locked b
 the next, never the whole plan for one big yes/no. Per cluster: state the decision,
 give 2–3 concrete options with a **recommendation and its reasoning**, ask the
 cluster as one **decision round** — *Asking the user a question* in
-`.ai/guidelines/project.md` — then wait for the user's pick.
+`.ai/guidelines/lundflow-workflow.md` — then wait for the user's pick.
 
 Record each **locked decision** with the rationale, so downstream (and the ticket
 reader) sees *why*, not just *what*.
@@ -144,8 +144,9 @@ it, don't silently start one**, and fold only the answer back into the cluster.
   your "2–3 options" are one idea in three costumes.
 
 **Source:** the design-it-twice resolver is adapted from
-`mattpocock-skills:codebase-design` (`DESIGN-IT-TWICE.md`); `.claude/skills/codebase-design/SKILL.md`
-carries this repo's short form. Offer to explain the pattern before starting one.
+`mattpocock-skills:codebase-design` (`DESIGN-IT-TWICE.md`); the skill the *Seam
+reference skill* setting names carries this project's short form. Offer to explain
+the pattern before starting one.
 
 ## Phase D — Present the full plan (hard gate)
 
@@ -171,7 +172,7 @@ missed. Structure:
 - **Files:** <models, actions/services, migrations, command, routes — concrete paths>
 
 ## Data Shapes
-<model columns + casts + relationships; API request/response shapes; raw-source columns>
+<model columns + casts + relationships; API request/response shapes; upstream-mirroring columns>
 
 ## Out of Scope
 <what this deliberately does NOT do — the explicit no-s>
@@ -198,10 +199,11 @@ this complete plan.**
 ## Phase E — Replace the ticket body
 
 Only after Phase D approval, write the approved plan into the **same ticket body**,
-**replacing** it (`linear-server` `save_issue` with `description` — repo rule: the
-ticket body is the single source of truth; write there, never a comment). Preserve
-any original acceptance intent by folding it into Problem/Solution. Write it
-verbatim as approved — do not re-plan or add at this step.
+**replacing** it (`linear-server` `save_issue` with `description` — per *Linear* in
+`.ai/guidelines/lundflow-linear.md`, the ticket body is the single source of truth;
+write there, never a comment). Preserve any original acceptance intent by folding
+it into Problem/Solution. Write it verbatim as approved — do not re-plan or add at
+this step.
 
 ## Phase F — Stop and route
 
@@ -209,9 +211,9 @@ Confirm the body is replaced, then **recommend the next skill** and stop — do 
 invoke it:
 
 - Plan spans **more than one ticket's worth** of work / multiple domains or seams →
-  recommend **`plan-breakdown`** (it decomposes into parallel tickets, then calls
-  `plan-slices` per ticket).
-- Plan is **a single ticket** → recommend **`plan-slices`** directly (slice this one
+  recommend **`lundflow:plan-breakdown`** (it decomposes into parallel tickets, then calls
+  `lundflow:plan-slices` per ticket).
+- Plan is **a single ticket** → recommend **`lundflow:plan-slices`** directly (slice this one
   ticket's plan into a TDD backlog).
 
 State which and why in one line. Create nothing else, write no further Linear
@@ -219,12 +221,13 @@ changes, and never enter breakdown or slicing yourself.
 
 ## Reference
 
-- `.claude/skills/plan-breakdown/SKILL.md` — next step for multi-ticket plans;
+- `${CLAUDE_PLUGIN_ROOT}/skills/plan-breakdown/SKILL.md` — next step for multi-ticket plans;
   decomposes into parallel-aware tickets. Consumes this skill's output.
-- `.claude/skills/plan-slices/SKILL.md` — next step for single-ticket plans; slices a
+- `${CLAUDE_PLUGIN_ROOT}/skills/plan-slices/SKILL.md` — next step for single-ticket plans; slices a
   finished plan into a TDD backlog. Expects exactly the zero-TDD plan this produces.
-- `CLAUDE.md` / `.ai/guidelines/project.md` — DDD layout, naming, raw-source column
-  convention that shape every locked decision.
-- `.claude/skills/codebase-design/SKILL.md` — module/interface/depth/seam
-  vocabulary; use its words when a locked decision is about an interface's shape.
+- `CLAUDE.md` — the project's conventions (layout, naming, column conventions) that
+  shape every locked decision.
+- The skill the *Seam reference skill* setting names, loaded with the Skill tool —
+  module/interface/depth/seam vocabulary; use its words when a locked decision is
+  about an interface's shape.
 - `docs/agents/domain.md` — how to consume `CONTEXT.md` and `docs/adr/`.

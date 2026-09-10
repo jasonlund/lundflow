@@ -38,6 +38,16 @@ function jqFreePathRegistry(): ArrayObject
 }
 
 /**
+ * A finished background task as it reaches a `UserPromptSubmit` hook: Claude Code
+ * delivers the notification as the prompt, so the hook sees text the user never
+ * wrote.
+ */
+function backgroundTaskNotification(string $summary): string
+{
+    return "<task-notification>\n<task-id>b1a2c3d4</task-id>\n<status>completed</status>\n<summary>Agent \"{$summary}\" finished</summary>\n</task-notification>";
+}
+
+/**
  * A PATH holding only the externals a hook needs (`cat`, `grep`) and NOT jq,
  * so "jq is missing from this machine" can be reproduced deterministically on
  * macOS and CI alike — both ship jq, just from different directories, so

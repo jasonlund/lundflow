@@ -1,5 +1,4 @@
 ---
-name: plan:run
 description: Orchestrates the planning pipeline end-to-end with gates — plan-draft (interview → concrete plan) → plan-breakdown (PRD → parallel tickets) → plan-slices (per-ticket TDD backlog). Single-ticket input skips breakdown. Stops at the backlog; hands off to the tdd skill.
 ---
 
@@ -9,7 +8,7 @@ Runs the three planning skills as one guided sequence, pausing at each skill's
 natural gate. **Defer all mechanics to the skills** — this orchestrator only
 sequences and branches.
 
-Pipeline: `plan-draft` → (`plan-breakdown` → `plan-slices`) → run the `tdd` skill.
+Pipeline: `lundflow:plan-draft` → (`lundflow:plan-breakdown` → `lundflow:plan-slices`) → run the `lundflow:tdd` skill.
 
 ## Input
 - A **Linear ticket id**, a **plan file path**, or **pasted rough notes**. If
@@ -18,12 +17,12 @@ Pipeline: `plan-draft` → (`plan-breakdown` → `plan-slices`) → run the `tdd
 ## Sequence
 
 ### Stage 1: draft  ⏸
-Invoke the `plan-draft` skill — interview the rough ticket into one concrete,
+Invoke the `lundflow:plan-draft` skill — interview the rough ticket into one concrete,
 decision-locked plan (architecture, files, decisions; zero TDD concern). It is
 interactive and ends with the locked plan.
 
 **Synthesis branch.** If the user says the decisions are already settled (a prior
-`grilling` session, a long design thread), pass that through — `plan-draft` skips
+`grilling` session, a long design thread), pass that through — `lundflow:plan-draft` skips
 its interview phases and assembles the plan from what was settled, keeping its
 full-plan approval gate. **Only on the user's say-so**; never infer it from a long
 conversation.
@@ -35,24 +34,24 @@ Judge how much work the locked plan covers:
 - **A single ticket** → skip breakdown, go Stage 3b.
 
 ### Stage 3a: breakdown  ⏸
-Invoke the `plan-breakdown` skill — decompose into parallel-aware, DDD-clean Linear
+Invoke the `lundflow:plan-breakdown` skill — decompose into parallel-aware, DDD-clean Linear
 tickets + the concurrency graph. It holds a **hard approval gate before any Linear
-write** (built in) and calls `plan-slices` per ticket in its own Phase E. Let it
+write** (built in) and calls `lundflow:plan-slices` per ticket in its own Phase E. Let it
 run its gates.
 
 ### Stage 3b: slices  ⏸
-Single-ticket path only: invoke the `plan-slices` skill against the one ticket/plan
+Single-ticket path only: invoke the `lundflow:plan-slices` skill against the one ticket/plan
 — it appends the ordered TDD Slice Backlog to the ticket body / plan file. **Pause**
 so the user reviews the testability findings before execution.
 
 ### Handoff
-Stop at the backlog. Tell the user to invoke the `tdd` skill to execute the first
-slice. Do nothing further — execution is the `tdd` skill's job.
+Stop at the backlog. Tell the user to invoke the `lundflow:tdd` skill to execute the first
+slice. Do nothing further — execution is the `lundflow:tdd` skill's job.
 
 ## Rules
 - **One stage at a time**; honor each skill's own gate.
 - **Defer, don't duplicate** — the skills own their logic; this file only routes.
 - Every ⏸ pause asks as a **decision round** — *Asking the user a question* in
-  `.ai/guidelines/project.md`.
+  `.ai/guidelines/lundflow-workflow.md`.
 
 $ARGUMENTS

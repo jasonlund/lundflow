@@ -1,5 +1,4 @@
 ---
-name: worktree:down
 description: Tear a LaborForest worktree down in one invocation — prove it is safe to abandon, run the `down` workflow, delete its Solo project, and report the orphans best-effort teardown left behind. Refuses on a dirty or unmerged branch.
 ---
 
@@ -14,24 +13,25 @@ gate below is the whole point of the command.
 ## Input
 
 - **Nothing** — the worktree you are standing in (`git rev-parse --show-toplevel`).
-- **`FLIX-NNN`** or **a branch name** — tear down that workspace instead.
+- **`{PREFIX}-NNN`** or **a branch name** — tear down that workspace instead, where
+  `{PREFIX}` is the *Ticket prefix* setting.
 
 ```
 /worktree:down
-/worktree:down FLIX-303
+/worktree:down {PREFIX}-303
 ```
 
-Run every `php artisan` call below **from the primary checkout** (`~/Sites/lundflix-v2`),
-so a worktree with a deleted `vendor/` still reports.
+Run every `php artisan` call below **from the primary checkout** (the *Primary
+checkout* setting), so a worktree with a deleted `vendor/` still reports.
 
 ---
 
 ## Phase 0: Preconditions
 
 1. **`mcp__laborforest__*` tools are bound.** Absent → HALT, say so, and point the user
-   at README's *Fallback: when the MCP doesn't answer*.
-2. `mcp__laborforest__find-project-by-path` with `~/Sites/lundflix-v2` → the project
-   `uuid`.
+   at `${CLAUDE_PLUGIN_ROOT}/README.md`'s *Fallback: when the MCP doesn't answer*.
+2. `mcp__laborforest__find-project-by-path` with the *Primary checkout* path → the
+   project `uuid`.
 3. Read `laborforest://projects/{uuid}/workspaces` and pick the workspace: by exact
    branch, or — for a ticket id — the branch that starts with the lowercased id.
 
@@ -57,7 +57,7 @@ workspace whose database survived teardown lands here too.
 ## Phase 2: Prove it is safe to abandon
 
 **Safe = clean tree AND merged.** Shell out to git for both — LaborForest's own
-`git_status` field reported `dirty` for three workspaces whose trees were clean and in
+`git_status` field has reported `dirty` for workspaces whose trees were clean and in
 sync with origin, so read git directly.
 
 ```bash
@@ -73,14 +73,13 @@ gh pr list --head <branch> --state merged --json number,mergedAt
   array. Both halves are required. A squash merge rewrites the branch into one new
   commit, so `git branch -r --contains HEAD` finds nothing and every branch commit reads
   as "ahead" — `--contains` alone calls merged work unmerged every time.
-- **Ask about this branch, not this ticket.** `git log --grep=<FLIX-NNN> origin/main`
+- **Ask about this branch, not this ticket.** `git log --grep=<{PREFIX}-NNN> origin/main`
   searches every commit message in the whole history with an unanchored pattern, so
   nothing ties a hit to the branch in hand: a ticket that ships in more than one PR
-  (`origin/main` already carries `FLIX-267/284:` and `FLIX-295:`) marks every later
-  branch for it merged forever, and a short id matches a longer one — `FLIX-30` inside
-  `FLIX-303:`. Pair either with a `[gone]` upstream and an unmerged branch passes the
-  gate. `--head <branch>` cannot: `gh` is already this pipeline's tool, and it answers
-  for this branch alone.
+  marks every later branch for it merged forever, and a short id matches a longer one —
+  `{PREFIX}-30` inside `{PREFIX}-303:`. Pair either with a `[gone]` upstream and an
+  unmerged branch passes the gate. `--head <branch>` cannot: `gh` is already this
+  pipeline's tool, and it answers for this branch alone.
 - **`gh` cannot answer** — unauthenticated, or the repo unresolvable — the merge half
   cannot be evaluated, so it counts as unmerged and the gate refuses.
 
@@ -126,9 +125,9 @@ site appears in step **output**, not in the exit code. `lf:run-log` surfaces tho
 
 **The first step, `Derive workspace env values`, is the exception — it aborts the run.**
 Its failure is not tolerated on purpose: without it the drop below runs against a stale
-`.env`, which after an aborted `up` still names `lundflix`, and those rows are not
-restorable from the dumps. It needs `vendor/`, so on a workspace whose `vendor/` was
-deleted the run stops there.
+`.env`, which after an aborted `up` still names the primary checkout's database, and
+nothing the worktree tooling seeds from can restore its rows. It needs `vendor/`, so on
+a workspace whose `vendor/` was deleted the run stops there.
 
 **A non-zero exit is three answers, not one — read the line before routing.**
 
@@ -214,6 +213,6 @@ path to. Finish in the LaborForest workspace row.
 
 - **User-invoked only.** This drops a database; it fires on your word alone.
 - Sources this command drives without restating: the steps in
-  `.laborforest/workflows/down.yaml`, README's by-hand fallback and its MCP tool table.
+  `.laborforest/workflows/down.yaml`, `${CLAUDE_PLUGIN_ROOT}/README.md`'s by-hand fallback and its MCP tool table.
 
 $ARGUMENTS

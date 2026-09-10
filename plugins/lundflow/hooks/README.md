@@ -1,6 +1,6 @@
 # Hooks
 
-Six hooks, all wired in `.claude/settings.json`, in four families:
+Six hooks, all wired in `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json`, in four families:
 
 - **Two `UserPromptSubmit` skill routers** nudge the agent into the right skill
   before it starts editing. Both **only remind** — they print to stdout, which
@@ -17,12 +17,12 @@ Six hooks, all wired in `.claude/settings.json`, in four families:
 
 | Hook | Event | Fires on | Effect |
 |---|---|---|---|
-| `feedback-router-reminder.sh` | `UserPromptSubmit` | Feedback / change request on existing work (review comment, bug report, "remove/rename/change X", a Conductor diff-comment attachment — LaborForest and Solo have no diff-comment equivalent) | Reminds → `tdd-feedback` skill |
-| `tdd-activation-reminder.sh` | `UserPromptSubmit` | New feature / implementation work ("implement", "build", "add a…", "create a…", "new endpoint/page/action") | Reminds → `tdd` skill |
+| `feedback-router-reminder.sh` | `UserPromptSubmit` | Feedback / change request on existing work (review comment, bug report, "remove/rename/change X"); never a background-task notification | Reminds → `lundflow:tdd-feedback` skill |
+| `tdd-activation-reminder.sh` | `UserPromptSubmit` | New feature / implementation work ("implement", "build", "add a…", "create a…", "new endpoint/page/action"); never a background-task notification | Reminds → `lundflow:tdd` skill |
 | `unattended-mode-notice.sh` | `UserPromptSubmit` | `permission_mode` is `bypassPermissions` — the session was started with `--dangerously-skip-permissions`, so nobody is watching | Notices → skill approval gates that only ask a human do not apply |
 | `block-destructive-git.sh` | `PreToolUse` (Bash) | A git command that destroys uncommitted work with no undo (`reset --hard/--merge/--keep`, `clean -f`, `branch -D`, `checkout .`, `restore .`, `stash drop/clear`) | Exits 2 → blocks the call; asks for a recoverable route instead |
 | `block-ask-user-question.sh` | `PreToolUse` (AskUserQuestion) | Any call to the `AskUserQuestion` picker — questions in this repo are plain markdown rounds in the chat | Exits 2 → blocks the call; names the canonical round format instead |
-| `no-background-gated-subagents.js` | `PreToolUse` (Agent) | A `run_in_background: true` dispatch of a subagent whose dispatcher blocks on a gate — `tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `review-fixer` | Denies the call with a reason naming that agent's own gate; re-dispatch foreground |
+| `no-background-gated-subagents.js` | `PreToolUse` (Agent) | A `run_in_background: true` dispatch of a subagent whose dispatcher blocks on a gate — `lundflow:tdd-test-writer`, `lundflow:tdd-implementer`, `lundflow:tdd-refactorer`, `lundflow:review-fixer` | Denies the call with a reason naming that agent's own gate; re-dispatch foreground |
 
 ## The two skill reminders
 
@@ -34,7 +34,7 @@ permission mode rather than the prompt, so it can fire alongside either.)
 token noise low while still lifting skill activation.
 `tdd-activation-reminder.sh` first checks the feedback signal set and **stays
 silent** if the prompt is feedback-shaped, so it never double-fires with
-`feedback-router-reminder.sh`; feedback is always `tdd-feedback`'s job.
+`feedback-router-reminder.sh`; feedback is always `lundflow:tdd-feedback`'s job.
 
 Each reminder walks the same 3-step gate: (1) another skill invoked this message →
 follow it; (2) user said this is NOT TDD work → proceed; (3) else invoke the skill.
@@ -42,7 +42,7 @@ follow it; (2) user said this is NOT TDD work → proceed; (3) else invoke the s
 ### Editing
 
 Both scripts pull the prompt from the hook payload with `jq` and lower-case it
-before matching. If you rename the `tdd` or `tdd-feedback` skill, update the
+before matching. If you rename the `lundflow:tdd` or `lundflow:tdd-feedback` skill, update the
 reminder text (the skill name is hardcoded in the heredoc) and the row above.
 
 The feature/feedback regexes are deliberately conservative — widen them only if you
@@ -51,11 +51,11 @@ observe the skill failing to activate on real prompts.
 ## The unattended-mode notice
 
 It **notices, never blocks** — and the asymmetry is the whole design. The notice
-names three ask-a-human gates — the `tdd` Step 1 RED plan card, `tdd-feedback`'s
-route confirmation, `review-tdd-cross-slice`'s sweep approval — and lifts those
+names three ask-a-human gates — the `lundflow:tdd` Step 1 RED plan card, `lundflow:tdd-feedback`'s
+route confirmation, `lundflow:review-tdd-cross-slice`'s sweep approval — and lifts those
 three only, so an AFK run over an approved slice backlog stops stalling at slice 1
 for an approval that will never come. The list is closed on purpose: the planning
-skills stay gated, because `plan-draft`'s interview *is* the work and running it
+skills stay gated, because `lundflow:plan-draft`'s interview *is* the work and running it
 unattended would lock decisions nobody made. It cannot lift a *correctness* gate
 either: RED still has to fail for the right reason, GREEN to pass, REFACTOR to
 stay green.
@@ -75,13 +75,13 @@ hook would go stale the instant someone shift-tabs the mode, and wiring both wou
 create two sources that can disagree. The trade-off: a mode toggled *mid-turn*
 isn't seen until the next prompt — accepted, because leaving bypass mid-loop is a
 deliberate act by someone who is, by definition, present. The same transience costs
-one more thing: an auto-compaction mid-run summarizes the notice away, so `tdd` stops
+one more thing: an auto-compaction mid-run summarizes the notice away, so `lundflow:tdd` stops
 and says so instead of entering plan mode for a human who isn't there, and the
 operator's next prompt re-fires the hook.
 
-**Editing.** The heredoc hardcodes six skill names — `tdd`, `tdd-feedback` and
-`review-tdd-cross-slice` as the gates it lifts, and `plan-draft`, `plan-breakdown`
-and `plan-slices` as the ones it does not. Rename any of the six and you must update
+**Editing.** The heredoc hardcodes six skill names — `lundflow:tdd`, `lundflow:tdd-feedback` and
+`lundflow:review-tdd-cross-slice` as the gates it lifts, and `lundflow:plan-draft`, `lundflow:plan-breakdown`
+and `lundflow:plan-slices` as the ones it does not. Rename any of the six and you must update
 the notice text and the row above; nothing tests these names.
 
 `tests/Feature/Hooks/UnattendedModeNoticeTest.php` pins every branch above, plus
@@ -112,7 +112,7 @@ the session on a single bad payload. A **missing `jq` also exits 0** — that is
 property of the machine, so any other exit would nag on every call until it lands.
 
 Pinned by `tests/Feature/Hooks/BlockAskUserQuestionTest.php`; the rule it enforces
-is *Asking the user a question* in `.ai/guidelines/project.md`.
+is *Asking the user a question* in `.ai/guidelines/lundflow-workflow.md`.
 
 ## The background-dispatch guard
 
@@ -120,13 +120,13 @@ Backgrounding a subagent buys concurrency. In front of a blocking gate there is
 none to buy: the dispatcher's very next act is to wait for that phase's result, so
 `run_in_background` overlaps nothing and only makes the harness wake the
 orchestrator on completion and nudge it to narrate — three no-information status
-lines per phase, nine per `tdd` slice. The `tdd` skill and `/review:process` both
+lines per phase, nine per `lundflow:tdd` slice. The `lundflow:tdd` skill and `/lundflow:review:process` both
 say to dispatch foreground; a command or skill body is advisory, so this enforces it.
 
 **Why it denies rather than exiting 2.** The structured form carries a
 `permissionDecisionReason` the harness surfaces verbatim, which lets the denial name
 *which* gate the caller is about to block on — the RED/GREEN/REFACTOR gates for the
-`tdd` trio, `/review:process` Phase 3 for `review-fixer`. An `exit 2` would deliver a
+`lundflow:tdd` trio, `/lundflow:review:process` Phase 3 for `lundflow:review-fixer`. An `exit 2` would deliver a
 bare stderr line with nowhere to put that. The decision travels in the JSON, so the
 script **exits 0 in every path, including the deny**; a non-zero exit would surface
 as a hook error instead.
@@ -136,10 +136,10 @@ A payload it cannot parse **fails OPEN** — the deliberate opposite of
 
 **The guarded set is name-based** — the map at the top of the script. A new subagent
 dispatched in front of a blocking gate inherits nothing and must be added there;
-`/review:suite`'s backgrounded `coderabbit-reviewer` deliberately stays out, because
-it genuinely overlaps `/review:claude` running concurrently.
+`/lundflow:review:suite`'s backgrounded `lundflow:coderabbit-reviewer` deliberately stays out, because
+it genuinely overlaps `/lundflow:review:claude` running concurrently.
 
 Pinned by `tests/Feature/Hooks/NoBackgroundGatedSubagentsTest.php`, which also
-asserts the registration in `.claude/settings.json` — an unwired hook is inert and
+asserts the registration in `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` — an unwired hook is inert and
 silent, so every behavior test can pass while the guard never fires; the script's own
 comments carry the fail-open rationale.

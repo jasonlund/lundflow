@@ -1,23 +1,23 @@
 # PR-open status contention (Linear ↔ GitHub integration)
 
 Background for the **write → read back → correct once** clause in the *Automatic
-ticket status transitions* contract (`.ai/guidelines/project.md`, generated into
-`CLAUDE.md`). The contract is binding; this file only records why it exists.
+ticket status transitions* contract (`.ai/guidelines/lundflow-linear.md`, generated
+into `CLAUDE.md`). The contract is binding; this file only records why it exists.
 
 ## Two writers, one event
 
-`pull_request.opened` is an event **both** `review:create-pr` and Linear's native
-GitHub integration react to. Our command writes **In Review**. The integration's
-default mapping for *opened* is **In Progress**, so it can overwrite our write a
-fraction of a second later.
+`pull_request.opened` is an event **both** `/lundflow:review:create-pr` and Linear's
+native GitHub integration react to. Our command writes **In Review**. The
+integration's default mapping for *opened* is **In Progress**, so it can overwrite
+our write a fraction of a second later.
 
 ## The observed incident
 
-FLIX-277 / PR #109:
+One recorded PR open:
 
 | Time | Writer | Status written |
 | --- | --- | --- |
-| `01:28:06.870` | `review:create-pr` (MCP `save_issue`) | In Review |
+| `01:28:06.870` | `/lundflow:review:create-pr` (MCP `save_issue`) | In Review |
 | `01:28:06.995` | Linear GitHub integration (webhook) | In Progress |
 
 125 ms apart.

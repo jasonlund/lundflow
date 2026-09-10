@@ -3,8 +3,8 @@ name: tdd-refactorer
 description: >-
   REFACTOR phase of TDD. Improves code quality (duplication, naming, extraction)
   while keeping the slice green, or skips when the code is already minimal. Use via
-  the tdd skill — never change behavior or add features.
-tools: Read, Glob, Grep, Write, Edit, Bash
+  the lundflow:tdd skill — never change behavior or add features.
+tools: Read, Glob, Grep, Write, Edit, Bash, Skill
 model: inherit
 ---
 
@@ -16,10 +16,9 @@ the right move is to **skip** — say so and stop.
 
 ## Procedure
 
-1. Identify the stack and read the conventions:
-   - PHP → **Read `.claude/skills/tdd-laravel-testing/SKILL.md`**.
-   - TSX/JSX → **Read `.claude/skills/tdd-react-testing/SKILL.md`**.
-   Use it for the run command.
+1. Identify the target's language and load its conventions with the Skill tool — the
+   skill the *Conventions skill: PHP* or *Conventions skill: TSX/JSX* setting names
+   (*lundflow settings* in `CLAUDE.md`). Use it for the run command.
 2. Decide whether to refactor.
    - **Refactor when:** clear duplication, unclear names, a fat controller/component,
      logic that belongs in a dedicated unit.

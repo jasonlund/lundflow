@@ -13,7 +13,7 @@ use Symfony\Component\Yaml\Yaml;
  * runs them and nothing here notices when they rot. Their destructive steps —
  * dropping the workspace database, unlinking the Herd site, and every step of
  * `refresh`, which reseeds from scratch — are separated from the primary
- * checkout's `lundflix` database by a single `if:` string. A dropped or mistyped
+ * checkout's own database by a single `if:` string. A dropped or mistyped
  * guard is invisible until an `lf` run destroys the primary. These tests are the
  * only thing that can see it.
  *
@@ -255,8 +255,8 @@ describe('down.yaml failure tolerance', function () use ($workflow, $stepsOf, $d
 
 describe('down.yaml step ordering', function () use ($workflow, $runsOf): void {
     // `up` copies the primary's .env verbatim and only rewrites it four steps
-    // later, so an `up` that aborted in between leaves DB_DATABASE=lundflix and
-    // LF_SITE=lundflix-v2 in a worktree's .env. Every guard here compares
+    // later, so an `up` that aborted in between leaves DB_DATABASE and LF_SITE
+    // naming the primary's database and site in a worktree's .env. Every guard here compares
     // directories and so cannot see a stale name. LaborForest re-reads .env per
     // step, so re-deriving before the destructive steps is what makes the
     // {{ ENV_* }} they interpolate name the workspace's own resources.
@@ -340,7 +340,7 @@ describe('up.yaml step ordering', function () use ($workflow, $runsOf): void {
 
     // Until `lf:workspace-env` runs, .env is still the primary's verbatim copy,
     // so both later steps would interpolate the primary's values: the database
-    // step would target `lundflix`, and `herd link --secure lundflix-v2` would
+    // step would target the primary's database, and `herd link --secure` would
     // re-point the primary's own site at this worktree.
     it('derives the workspace env before creating the database and linking the Herd site', function () use ($workflow, $runsOf): void {
         // Arrange
@@ -395,7 +395,7 @@ describe('up.yaml fast-forward', function () use ($workflow, $stepsOf): void {
     // A bare `git merge --ff-only` aborts every run on a fresh worktree:
     // LaborForest seeds `.laborforest/workflows/*.yaml` and
     // `.laborforest/ignored/.gitignore` as UNTRACKED files, those same paths are
-    // TRACKED on origin/main, and --ff-only refuses to clobber them (FLIX-302).
+    // TRACKED on origin/main, and --ff-only refuses to clobber them.
     // The skip check, the clearing of those seeded paths and the merge all move
     // into `lf:workspace-sync`, where the Feature suite can actually run them —
     // which also retires the `test "$(git rev-list …)"` condition, computation
