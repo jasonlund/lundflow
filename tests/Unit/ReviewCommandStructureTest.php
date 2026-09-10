@@ -6,7 +6,7 @@ use Illuminate\Support\Str;
 use Tests\Support\ToolkitFiles;
 
 /**
- * Structure guard for `.claude/commands/review/claude.md`.
+ * Structure guard for `plugins/lundflow/commands/review/claude.md`.
  *
  * The command is prose an agent reads at dispatch time, so nothing else in the
  * suite can see it drift: a deleted gate, an agent name resolving to no file, or
@@ -21,7 +21,7 @@ use Tests\Support\ToolkitFiles;
  *
  * The report contract is the sharpest of these and the only cross-file one: the
  * headings and per-finding fields it checks are what
- * `.claude/commands/review/add.md` parses to build the PR review payload, so
+ * `plugins/lundflow/commands/review/add.md` parses to build the PR review payload, so
  * dropping one silently empties a posted review.
  *
  * File reading, line counting and the named-pattern check come from
@@ -45,7 +45,7 @@ $commandSource = fn (): string => ToolkitFiles::read('plugins/lundflow/commands/
  */
 $agentMentions = function (string $source): array {
     // A token with a slash on either side is a path segment
-    // (`.claude/skills/review-pipeline/SKILL.md`), not an agent dispatch, so it
+    // (`plugins/lundflow/skills/review-pipeline/SKILL.md`), not an agent dispatch, so it
     // is excluded structurally rather than deny-listed by name. Corollary: name
     // the review-pipeline skill by its path, as the command already does — a
     // bare mention reads here as a dispatch to an agent that does not exist.
@@ -63,7 +63,7 @@ $agentMentions = function (string $source): array {
 };
 
 /**
- * The sections `.claude/skills/review-pipeline/SKILL.md` publishes, each paired
+ * The sections `plugins/lundflow/skills/review-pipeline/SKILL.md` publishes, each paired
  * with the prose spellings a dispatcher or an agent uses to name it.
  *
  * Matched on prose rather than on the heading text, because neither side quotes
@@ -140,7 +140,7 @@ $agentInputSection = function (string $agent): string {
     return preg_match('~^## Input\s*$.*?(?=^## |\z)~ms', $source, $matches) === 1 ? $matches[0] : '';
 };
 
-describe('/review:claude deterministic gates', function () use ($commandSource): void {
+describe('/lundflow:review:claude deterministic gates', function () use ($commandSource): void {
     it('names every deterministic gate the pipeline runs', function () use ($commandSource): void {
         // The five gates produce facts rather than judgement, so a dropped one is
         // a whole class of defect the review stops catching at all.
@@ -161,7 +161,7 @@ describe('/review:claude deterministic gates', function () use ($commandSource):
     });
 });
 
-describe('/review:claude agent dispatch', function () use ($commandSource, $agentMentions): void {
+describe('/lundflow:review:claude agent dispatch', function () use ($commandSource, $agentMentions): void {
     it('runs the skip gate before it dispatches any reviewer', function () use ($commandSource, $agentMentions): void {
         // The skip gate only saves anything if it runs first — a closed, draft or
         // already-reviewed PR must stop the pipeline before four reviewers are
@@ -183,7 +183,7 @@ describe('/review:claude agent dispatch', function () use ($commandSource, $agen
             ->and(ToolkitFiles::lineCount($source))->toBeGreaterThan(50);
     });
 
-    it('dispatches only agents that exist under .claude/agents', function () use ($commandSource, $agentMentions): void {
+    it('dispatches only agents that exist under plugins/lundflow/agents', function () use ($commandSource, $agentMentions): void {
         // A dispatch to a missing agent is silent: the harness has nothing to run,
         // that phase produces no findings, and the report still renders.
         // The mention floor is the non-vacuous half — a command naming no agents
@@ -199,7 +199,7 @@ describe('/review:claude agent dispatch', function () use ($commandSource, $agen
         // Assert
         expect($dispatched
             ->reject(fn (string $agent): bool => file_exists($agentDirectory.$agent.'.md'))
-            ->map(fn (string $agent): string => sprintf('dispatches %s  →  no .claude/agents/%s.md', $agent, $agent))
+            ->map(fn (string $agent): string => sprintf('dispatches %s  →  no plugins/lundflow/agents/%s.md', $agent, $agent))
             ->values()
             ->all())->toBe([])
             ->and($dispatched->all())->not->toBeEmpty()
@@ -207,7 +207,7 @@ describe('/review:claude agent dispatch', function () use ($commandSource, $agen
     });
 });
 
-describe('/review:claude report contract', function () use ($commandSource): void {
+describe('/lundflow:review:claude report contract', function () use ($commandSource): void {
     it('states the 400-word reviewer cap — presence of the instruction, not obedience to it', function () use ($commandSource): void {
         // A static scan cannot count the words a model actually writes; all it can
         // prove is that the cap was not deleted from the instructions.
@@ -243,10 +243,10 @@ describe('/review:claude report contract', function () use ($commandSource): voi
             ->and(ToolkitFiles::lineCount($source))->toBeGreaterThan(50);
     });
 
-    it('keeps every report section and finding field that /review:add parses', function () use ($commandSource): void {
-        // Cross-file contract, verified against `.claude/commands/review/add.md`
+    it('keeps every report section and finding field that /lundflow:review:add parses', function () use ($commandSource): void {
+        // Cross-file contract, verified against `plugins/lundflow/commands/review/add.md`
         // (Phase 1 step 4 names the sections; the Phase 3 review-body template
-        // names the fields). `/review:add` reads this report to build the PR
+        // names the fields). `/lundflow:review:add` reads this report to build the PR
         // payload, so a renamed heading here posts an empty review over there —
         // with no error on either side.
         // The found-by entry accepts both spellings on purpose: this report writes
@@ -282,7 +282,7 @@ describe('/review:claude report contract', function () use ($commandSource): voi
     });
 });
 
-describe('/review:claude Phase 3 dispatch contract', function () use ($commandSource, $contractSections, $sectionsNamedIn, $phaseThreeBlock, $passList, $dispatchBullets, $agentInputSection): void {
+describe('/lundflow:review:claude Phase 3 dispatch contract', function () use ($commandSource, $contractSections, $sectionsNamedIn, $phaseThreeBlock, $passList, $dispatchBullets, $agentInputSection): void {
     it('hands every reviewer the contract sections its own Input section expects', function () use ($commandSource, $contractSections, $sectionsNamedIn, $phaseThreeBlock, $passList, $agentInputSection): void {
         // A reviewer runs in isolated context: it can only read a contract section
         // the dispatcher named for it. So a section an agent's Input declares and

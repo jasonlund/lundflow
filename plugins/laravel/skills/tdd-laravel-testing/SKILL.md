@@ -14,10 +14,11 @@ description: >-
 
 ## Runner & commands
 
-- **Pest** (`./vendor/bin/pest`) or `php artisan test` (the `composer test` script
-  clears config then runs `php artisan test`).
+- **Pest** (`./vendor/bin/pest`) or `php artisan test`. The project's own commands
+  are the *Backend test (filtered)* and *Backend test (full)* settings — use them
+  where they differ from the defaults below.
 - Run one test file: `php artisan test tests/Feature/Foo/BarTest.php`
-- Run by name filter: `php artisan test --filter='renders the movie list'`
+- Run by name filter: `php artisan test --filter='renders the order list'`
 - Always run the **single** test under work during a TDD cycle — not the whole suite —
   until the gate is met; run the broader suite before finishing GREEN.
 
@@ -28,14 +29,14 @@ description: >-
 - `tests/Unit/` — pure units (a service, a value object) with no framework boot.
   Use only when there's genuine isolated logic.
 - **Mirror the domain tree:** `tests/Feature/{Domain}/` and `tests/Unit/{Domain}/`
-  map to `app/Domains/{Domain}/` (e.g. `tests/Feature/Catalog/`).
+  map to `app/Domains/{Domain}/` (e.g. `tests/Feature/Billing/`).
 
 ## Patterns
 
 - Use `RefreshDatabase` (Pest: `uses(RefreshDatabase::class)`) for DB tests.
-- Build state with **model factories** (`Movie::factory()->create()`), never raw
+- Build state with **model factories** (`Order::factory()->create()`), never raw
   inserts or fixtures.
-- HTTP: `$this->actingAs($user)->get(route('movies.index'))` then
+- HTTP: `$this->actingAs($user)->get(route('orders.index'))` then
   `->assertOk()`, `->assertRedirect()`, `->assertForbidden()`.
 - Test **behavior, not implementation**: assert response/DB/side-effects the caller
   observes, not internal method calls.
@@ -51,10 +52,10 @@ description: >-
 
   ```php
   // BAD — recomputes the implementation
-  expect($movie->displayTitle())->toBe($movie->_tmdb_title ?? $movie->_imdb_title);
+  expect($invoice->displayNumber())->toBe($invoice->prefix.'-'.$invoice->sequence);
 
   // GOOD — an independent literal
-  expect($movie->displayTitle())->toBe('Blade Runner');
+  expect($invoice->displayNumber())->toBe('INV-0042');
   ```
 
 - **Implementation-coupled.** Mocking an internal collaborator, asserting on call
@@ -63,9 +64,9 @@ description: >-
 - **Mock only at system seams** — a third-party HTTP API, a shelled process, the
   clock, randomness. **Never mock our own classes.** A domain Action, a service, a
   model: build the real thing. Our own collaborators are `in-process` or
-  `local-substitutable` dependencies (see `codebase-design`), and both are testable
+  `local-substitutable` dependencies (see `laravel:codebase-design`), and both are testable
   for real.
-- **Test names describe WHAT, not HOW** — `it('rejects a duplicate title')`, not
+- **Test names describe WHAT, not HOW** — `it('rejects a duplicate reference')`, not
   `it('calls the uniqueness validator')`.
 
 **Source:** the tautological, implementation-coupled, and mock-only-at-seams rules
@@ -75,9 +76,9 @@ explain the upstream reasoning when one of them decides a review call.
 ### Database assertions ARE behavior verification
 
 `assertDatabaseHas` / `assertDatabaseCount` / `assertDatabaseMissing` are the
-**correct** way to verify an ingest or sync module such as `SyncTmdbMovies`: the
-persisted row *is* the observable behavior, so assert it and treat that as testing
-at the seam — see `docs/adr/0002-database-assertions-verify-ingest-behavior.md`.
+**correct** way to verify an ingest or sync module such as an order-import action:
+the persisted row *is* the observable behavior, so assert it and treat that as
+testing at the seam — see `${CLAUDE_PLUGIN_ROOT}/docs/adr/0002-database-assertions-verify-ingest-behavior.md`.
 
 Where a read interface *does* exist and is the thing under test, prefer it — assert
 on what the endpoint or accessor returns rather than re-querying the table behind it.
@@ -92,16 +93,16 @@ shape (fabricated fixtures drift from what the API actually emits and still pass
   extension the API returns (`.tsv.gz`, `.json`, …). Domained, sub-keyed by source.
   Curate a handful of real records covering the cases under test; document them in a
   comment at the top of the test file (compressed/opaque fixtures don't diff).
-- Load bytes with the global `fixtureBytes($path)` helper (in `tests/Pest.php`),
-  which wraps Pest's built-in `fixture()` (the latter returns the resolved path under
+- Load bytes through a global helper in `tests/Pest.php` — e.g. `fixtureBytes($path)`
+  — wrapping Pest's built-in `fixture()` (the latter returns the resolved path under
   `tests/Fixtures/` and asserts existence):
 
   ```php
-  Http::fake(['*datasets.imdbws.com*' => Http::response(
-      fixtureBytes('Catalog/imdb/title.basics.tsv.gz')
+  Http::fake(['*api.vendor.example*' => Http::response(
+      fixtureBytes('Billing/vendor/invoices.json')
   )]);
   ```
-- `Http::preventStrayRequests()` runs in a global `beforeEach` for Feature tests, so
+- With `Http::preventStrayRequests()` in a global `beforeEach` for Feature tests,
   any un-faked external request fails the test. Fake every external call.
 - Synthetic bodies are allowed **only** for inputs that can't exist in real data:
   malformed/corrupt payloads, blank lines, HTTP error statuses.
@@ -116,7 +117,7 @@ shape (fabricated fixtures drift from what the API actually emits and still pass
 
 ### Design the client so one fake is one shape
 
-Give an API service **one named method per external operation** (`fetchMovie()`,
+Give an API service **one named method per external operation** (`fetchInvoice()`,
 `fetchChanges()`), not a single generic `request($endpoint, $options)` with
 conditional logic inside. A generic fetcher forces the *fake* to grow the same
 conditional — a `Http::fake` closure branching on the URL to decide which body to
@@ -134,22 +135,21 @@ For Inertia pages, assert the component name and props with `AssertableInertia`:
 ```php
 use Inertia\Testing\AssertableInertia as Assert;
 
-$this->get(route('movies.index'))
+$this->get(route('orders.index'))
     ->assertInertia(fn (Assert $page) => $page
-        ->component('movies/Index')   // lowercase: resolves resources/js/pages/movies/Index.tsx
-        ->has('movies', 3)
-        ->where('movies.0.title', 'Heat')
+        ->component('orders/Index')   // lowercase: resolves resources/js/pages/orders/Index.tsx
+        ->has('orders', 3)
+        ->where('orders.0.reference', 'ORD-1001')
     );
 ```
 
 This verifies the backend contract the React page depends on — pair it with the
-frontend `tdd-react-testing` cycle for full-stack features.
+frontend `laravel:tdd-react-testing` cycle for full-stack features.
 
 ## Test-comment standard (strict)
 
 Unlike production code (where comments are trimmed to non-obvious *why*), test
-comments are **deliberate and mandatory**. One canonical form, strictly enforced
-by `tests/Unit/TestCommentStandardTest.php`:
+comments are **deliberate and mandatory**. One canonical form, held strictly:
 
 1. **AAA labels are mandatory, one per block, label-only line.** `// Arrange`,
    `// Act`, `// Assert` — each on its own line carrying ONLY the label (or a
@@ -175,9 +175,9 @@ by `tests/Unit/TestCommentStandardTest.php`:
 
 ## Test-organization standard (strict)
 
-How a test **file** is laid out, enforced by `tests/Unit/TestOrganizationStandardTest.php`
-(which scans `tests/**/*.php` + `resources/js/**/*.test.ts(x)` through
-`Tests\Support\TestOrganizationScanner`). Machine-checked rules first:
+How a test **file** is laid out, across `tests/**/*.php` and
+`resources/js/**/*.test.ts(x)`. Mechanical rules first — the ones a guard test can
+check:
 
 1. **Every `it()` lives inside a `describe()`.** Several top-level describes per
    file are fine — one per behavior area; nesting allowed. Never a top-level test.
@@ -195,15 +195,15 @@ How a test **file** is laid out, enforced by `tests/Unit/TestOrganizationStandar
    unique within their describe (the same description may repeat in another group).
 5. **`describe` labels are unique within a file.**
 
-Judgment rules the scanner can't check:
+Judgment rules no scanner can check:
 
 - **Label style: subject + facet**, method names keeping their parens —
-  `describe('series() JWT auth', …)`, `describe('episodes() pagination', …)`.
+  `describe('invoices() auth', …)`, `describe('orders() pagination', …)`.
 - **Happy path first**, edge cases and failures last within a describe.
 - **`beforeEach` may be file-level or per-`describe`**; prefer a per-`describe`
   one over repeating the same arrange in every `it()` of that group.
 
-## RED checklist (for tdd-test-writer)
+## RED checklist (for `lundflow:tdd-test-writer`)
 
 - A small cohesive set (2–6) of failing tests for one behavior slice; each describes
   one user-observable behavior.
@@ -211,16 +211,16 @@ Judgment rules the scanner can't check:
   per test. Label form per the strict standard above.
 
 ```php
-it('stores a movie', function () {
+it('stores an order', function () {
     // Arrange
     $user = User::factory()->create();
 
     // Act
-    $response = $this->actingAs($user)->post(route('movies.store'), ['title' => 'Heat']);
+    $response = $this->actingAs($user)->post(route('orders.store'), ['reference' => 'ORD-1001']);
 
     // Assert
     $response->assertRedirect();
-    expect(Movie::where('title', 'Heat')->exists())->toBeTrue();
+    expect(Order::where('reference', 'ORD-1001')->exists())->toBeTrue();
 });
 ```
 - Run it; it must fail on the **assertion** (red for the right reason), not on a
@@ -228,7 +228,7 @@ it('stores a movie', function () {
   built yet" is acceptable red only when that status IS the behavior under test;
   otherwise stub the route so the assertion is what fails.
 
-## REFACTOR targets (for tdd-refactorer)
+## REFACTOR targets (for `lundflow:tdd-refactorer`)
 
 - Extract fat controller logic into **actions**, **services**, or **form requests**.
 - Move validation to form requests; authorization to policies.

@@ -1,21 +1,22 @@
 ---
 name: codebase-design
 description: >-
-  lundflix's stack-local design reference: the four dependency categories mapped
-  onto this app's test seams (sqlite `:memory:` for the database, `Http::fake()`
-  with byte-exact fixtures for third parties, `artisan()` for our own
-  out-of-process code), the seam vocabulary `plan-slices` and `tdd` write their
-  cards in, and the ingest-write exception recorded in ADR-0002. Use when deciding
-  how a lundflix module is tested across its seam, or when another skill in this
-  repo needs these exact terms. A reference to consult, not a session to run.
+  The Laravel stack's design reference: the four dependency categories mapped
+  onto a Laravel app's test seams (sqlite `:memory:` for the database,
+  `Http::fake()` with byte-exact fixtures for third parties, `artisan()` for our
+  own out-of-process code), the seam vocabulary `lundflow:plan-slices` and
+  `lundflow:tdd` write their cards in, and the ingest-write exception recorded in
+  ADR-0002. Use when deciding how a module in a Laravel project is tested across
+  its seam, or when another skill needs these exact terms. A reference to consult,
+  not a session to run.
 ---
 
 # Codebase Design
 
 Design **deep modules**: a lot of behavior behind a small interface, placed at a
 clean seam, testable through that interface. This file is the single source of
-these terms — `plan-slices` writes its seam contract in them, `tdd` names the seam
-each RED card tests at, and `review-pipeline` cites them. Use them **exactly** as
+these terms — `lundflow:plan-slices` writes its seam contract in them, `lundflow:tdd` names the seam
+each RED card tests at, and `lundflow:review-pipeline` cites them. Use them **exactly** as
 defined below.
 
 ## Glossary
@@ -41,7 +42,8 @@ implementation.
 **Seam** *(Feathers)* — a place where behavior can be altered without editing in
 that place; the *location* where a module's interface lives. Where to put the seam
 is its own decision, separate from what goes behind it. *Avoid:* boundary —
-overloaded with DDD's bounded context, which this repo uses for `app/Domains/*`.
+overloaded with DDD's bounded context, which the Laravel layout uses for
+`app/Domains/*`.
 
 **Adapter** — a concrete thing satisfying an interface at a seam. Names a *role*,
 not a substance.
@@ -83,10 +85,10 @@ before choosing a seam:
 
 | Category | What it is | How it's tested here |
 |---|---|---|
-| **In-process** | Pure computation, no I/O — enums, value objects, parsers, `SourceId` | Test the interface directly. No adapter, no seam needed. |
+| **In-process** | Pure computation, no I/O — enums, value objects, parsers | Test the interface directly. No adapter, no seam needed. |
 | **Local-substitutable** | Has a real local stand-in — the database | sqlite `:memory:` + `RefreshDatabase`. The seam is internal; no port at the module's interface. |
 | **Remote but owned** | Our own code across a process boundary — a queued job, an artisan command | Test through the real entry point (`artisan()`, dispatching the job); the transport is the seam. |
-| **True external** | Third parties we don't control — TMDB, TVDB, IMDb, Plex, the download source | `Http::fake()` / `Process::fake()` at the HTTP or process seam, fed byte-exact fixtures. Never reach the network. |
+| **True external** | Third parties we don't control — a payment gateway, a mail API, a vendor's data feed | `Http::fake()` / `Process::fake()` at the HTTP or process seam, fed byte-exact fixtures. Never reach the network. |
 
 The **true external** row is why an API service takes its dependencies rather than
 constructing them, and why base URLs are `private const` on the calling service:
@@ -103,7 +105,7 @@ the fake substitutes at the HTTP seam, so the service's own interface stays clea
 
 **A persisted row is a legitimate observable.** For an ingest or sync module the
 write *is* the behavior, so assert the persisted state and treat that as testing
-the interface — see `docs/adr/0002-database-assertions-verify-ingest-behavior.md`.
+the interface — see `${CLAUDE_PLUGIN_ROOT}/docs/adr/0002-database-assertions-verify-ingest-behavior.md`.
 
 ## Exploring an interface twice
 
@@ -125,11 +127,11 @@ per-agent outputs, comparison). Offer the original before running one.
   rewards padding the implementation. We use depth-as-leverage.
 - **"Interface" as just the method signature** — too narrow; the interface includes
   every fact a caller must know.
-- **"Boundary"** — this repo uses it for DDD bounded contexts. Say **seam**.
+- **"Boundary"** — the Laravel layout uses it for DDD bounded contexts. Say **seam**.
 
 ## Reference
 
-- `.claude/skills/plan-slices/SKILL.md` — the seam contract, written in these terms.
-- `.claude/skills/tdd/SKILL.md` — each RED card names the seam it tests at.
+- `lundflow:plan-slices` — the seam contract, written in these terms.
+- `lundflow:tdd` — each RED card names the seam it tests at.
 - `mattpocock-skills:codebase-design` — the upstream skill; `DEEPENING.md` and
   `DESIGN-IT-TWICE.md` carry the long form.

@@ -7,7 +7,7 @@ model: haiku
 
 # Review Skip Check
 
-You answer one question for `/review:claude` Phase 0.5: is this PR worth reviewing?
+You answer one question for `/lundflow:review:claude` Phase 0.5: is this PR worth reviewing?
 
 Haiku, and first in the pipeline: everything downstream — five gates, four
 reviewers, one validator per finding — runs only if you say REVIEW. A PR that needs
@@ -22,7 +22,7 @@ The output of `gh pr view {PR_NUMBER} --json state,isDraft,title,files,reviews`:
 - `files` — every changed path with its additions and deletions. This is your
   diffstat; the patch itself is out of scope for this gate.
 - `reviews` — every review already on the PR, each with its body. A body naming
-  `/review:claude` is a prior run of this pipeline.
+  `/lundflow:review:claude` is a prior run of this pipeline.
 
 Judge on what you were handed. **A field you were not handed reads as REVIEW** —
 absent `reviews` means "no prior review is proven", never "a prior review might
@@ -33,7 +33,7 @@ exist". Guessing a skip cancels the whole pipeline.
 - **Closed or merged.** `state` is `CLOSED` or `MERGED`. Nothing to act on.
 - **Draft.** `isDraft` is true. The author is still working; review lands when
   they mark it ready.
-- **Already reviewed.** A `reviews` body names `/review:claude`.
+- **Already reviewed.** A `reviews` body names `/lundflow:review:claude`.
 - **Trivial and obviously correct.** A version bump, a lockfile regeneration, a
   generated-file refresh, a typo in prose, a whitespace-only change.
 

@@ -1,28 +1,28 @@
 ---
-name: review:create-pr
-description: First stage of the review loop — lint the dirty files, commit and push the branch, then open a GitHub PR whose title/body are grounded in the Linear ticket, the diff, and the commit history. Leaves a clean pushed branch with an open PR that /review:claude auto-detects.
+description: First stage of the review loop — lint the dirty files, commit and push the branch, then open a GitHub PR whose title/body are grounded in the Linear ticket, the diff, and the commit history. Leaves a clean pushed branch with an open PR that /lundflow:review:claude auto-detects.
 ---
 
 # Create PR
 
 You are running the **first** stage of the review loop:
-**`/review:create-pr`** (lint → commit → push → open PR) → `/review:debrief`
-(plain-language account of the branch + ticket-scope check) → `/review:suite` or
-`/review:claude` (generate findings) → `/review:add` (post them) →
-`/review:process` (act on them).
+**`/lundflow:review:create-pr`** (lint → commit → push → open PR) → `/lundflow:review:debrief`
+(plain-language account of the branch + ticket-scope check) → `/lundflow:review:suite` or
+`/lundflow:review:claude` (generate findings) → `/lundflow:review:add` (post them) →
+`/lundflow:review:process` (act on them).
 
 Your job is to leave a clean, pushed branch with one open PR against `main`,
-titled and described so a reviewer (human or `/review:claude`) can pick it up with no
-extra context. You **stop** after opening the PR — you do not chain `/review:claude`.
+titled and described so a reviewer (human or `/lundflow:review:claude`) can pick it up with no
+extra context. You **stop** after opening the PR — you do not chain `/lundflow:review:claude`.
 
 ## Input
-- **Ticket ID** — `FLIX-XXX`, positional arg, or auto-extracted from the branch.
+- **Ticket ID** — `{PREFIX}-XXX`, where `{PREFIX}` is the *Ticket prefix* setting;
+  positional arg, or auto-extracted from the branch.
 - Everything else is inferred from the working tree and branch.
 
 ## Example Invocation
 ```
-/review:create-pr             # auto-detect ticket from branch, open PR against main
-/review:create-pr FLIX-154    # explicit ticket
+/lundflow:review:create-pr                 # auto-detect ticket from branch, open PR against main
+/lundflow:review:create-pr {PREFIX}-154    # explicit ticket
 ```
 
 ---
@@ -34,9 +34,9 @@ extra context. You **stop** after opening the PR — you do not chain `/review:c
    nothing to open a PR for.
 2. **No PR already open.** Run `gh pr view --json number,url -q '.number' 2>/dev/null`.
    If one exists, HALT and print its URL — this branch already has a PR; direct the
-   user to `/review:claude`.
+   user to `/lundflow:review:claude`.
 3. **Ticket ID** — if not passed, follow **Ticket ID Auto-Extraction** in
-   `.claude/skills/review-pipeline/SKILL.md` (branch name → PR title → null). If
+   `${CLAUDE_PLUGIN_ROOT}/skills/review-pipeline/SKILL.md` (branch name → PR title → null). If
    null, **prompt the user to create a Linear ticket** before proceeding (per the
    CLAUDE.md Linear rule — every branch maps to ≥1 ticket). Do not open a PR
    without a ticket unless the user explicitly waives it.
@@ -46,36 +46,29 @@ extra context. You **stop** after opening the PR — you do not chain `/review:c
 ## Phase 1: Lint the Dirty Files
 
 Run every linter/formatter for the files you touched, **scoped to the changed
-work — never a repo-wide sweep** (a bare `vendor/bin/rector` rewrites generated
-`bootstrap/cache/*` and unrelated files). "Dirty" = uncommitted changes **plus**
-files this branch changed vs `origin/main`:
+work — never a repo-wide sweep** (a repo-wide run rewrites generated and unrelated
+files). "Dirty" = uncommitted changes **plus** files this branch changed vs
+`origin/main`:
 
 ```bash
 git diff --name-only origin/main...HEAD; git diff --name-only; git diff --name-only --cached
 ```
 Deduplicate, keep only existing files, then split by type.
 
-### 1a. PHP touched — in this exact order
-```bash
-vendor/bin/rector process <changed .php files>
-vendor/bin/pint --dirty --format agent
-```
-Pint runs **after** Rector, to normalize what Rector reformatted.
+### 1a. Backend touched (PHP) — in the order the setting lists
+Run the *Finalize gates (backend)* setting over the changed backend files, in the
+order it lists its commands. The formatter runs **last**, to normalize what a
+refactor tool reformatted (in a Laravel project: Rector, then Pint).
 
-### 1b. Frontend touched (`.ts`/`.tsx`/`.js`/`.css` under `resources/`)
-```bash
-npm run lint
-npm run format
-npm run types
-```
+### 1b. Frontend touched (`.ts`/`.tsx`/`.js`/`.css`)
+Run the *Finalize gates (frontend)* setting.
 
 ### 1c. Re-run affected tests
 Linters reorder and retype code, so re-verify green **after** 1a/1b. Filter to the
 touched domain(s), not the whole suite:
-```bash
-php artisan test --compact --filter=<Domain>   # if PHP changed
-npm test                                        # if resources/js changed
-```
+- the *Backend test (filtered)* setting, filtered to `<Domain>`, if backend code
+  changed;
+- the *Frontend test (full)* setting, if frontend code changed.
 
 **Gate:** if any linter errors out (not just reformats) or any test is red, **HALT
 here** — report exactly what failed and do **not** commit, push, or open a PR. A PR
@@ -92,7 +85,7 @@ The skill owns the commit.
    skip to push.
 3. Commit with a ticket-prefixed subject matching the repo convention:
    ```
-   FLIX-XXX: <concise summary of the change>
+   {PREFIX}-XXX: <concise summary of the change>
    ```
    Append the co-author trailer the harness supplies for this session — never
    hardcode one, it stamps a model version that rots. Squash lint fixups into this
@@ -113,8 +106,8 @@ source supplies one thing:
 | Commits | the narrative / ordering | `git log --oneline origin/main..HEAD` |
 
 ### Title
-`FLIX-XXX: <concise summary>` — every PR in this repo follows this. Drop the
-`FLIX-XXX:` prefix only if there is genuinely no ticket.
+`{PREFIX}-XXX: <concise summary>` — every PR follows this. Drop the
+`{PREFIX}-XXX:` prefix only if there is genuinely no ticket.
 
 ### Body
 Write the way the repo already writes PR bodies: **one tight prose paragraph**
@@ -147,8 +140,8 @@ Delete the temp file after. Do not pass `--draft`.
 
 Once the PR is confirmed open, advance **every ticket the PR covers** to **In
 Review** via the `linear-server` MCP `save_issue`, per the *Automatic ticket
-status transitions* contract in `project.md` (forward-only; skip
-Canceled/Duplicate; no-op if already In Review or later).
+status transitions* contract in `.ai/guidelines/lundflow-linear.md` (forward-only;
+skip Canceled/Duplicate; no-op if already In Review or later).
 
 **Then read it back — PR-open is contended.** Linear's GitHub integration reacts to
 the same `pull_request.opened` event and its default mapping for *opened* is In
@@ -159,7 +152,7 @@ looping. Report the correction when one was needed.
 
 "Covered" = the union of
 the ticket resolved in Phase 0 (explicit arg → branch name → PR title) **and**
-every `FLIX-XXX` id in the branch name — so a ticket passed explicitly or found in
+every `{PREFIX}-XXX` id in the branch name — so a ticket passed explicitly or found in
 the PR title but absent from the branch name still moves, and a multi-ticket branch
 moves all of them together at PR open. No ticket resolves → skip silently.
 
@@ -176,11 +169,11 @@ Branch pushed · {N} commit(s) · lint clean · tests green
 
 View: {PR URL}
 
-Next: /review:debrief
+Next: /lundflow:review:debrief
 ```
 
 ## Notes
-- **Single-purpose.** Do not run `/review:claude` or any review agents — hand off.
+- **Single-purpose.** Do not run `/lundflow:review:claude` or any review agents — hand off.
 - **Never force-push** or rewrite existing commits beyond squashing your own lint
   fixups into the commit you just made.
 - If `gh pr create` fails, show the error and the generated title/body so the work

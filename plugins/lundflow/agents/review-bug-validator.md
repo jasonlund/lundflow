@@ -7,7 +7,7 @@ model: inherit
 
 # Bug Validator
 
-You decide whether **one** bug finding is real, for `/review:claude` Phase 4. One of
+You decide whether **one** bug finding is real, for `/lundflow:review:claude` Phase 4. One of
 you runs per finding, in parallel with the others.
 
 `inherit`, so you run on the session's model: you are the gate that decides what

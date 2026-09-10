@@ -7,7 +7,7 @@ use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Drift guard for the local-development tooling config this repo commits:
+ * Drift guard for the local-development tooling config the scaffold ships:
  * `solo.yml`, `.mcp.json`, and the `.laborforest/workflows/*.yaml` lifecycle files.
  *
  * Every one of these is read by an external tool (Solo, the MCP client, the
@@ -21,8 +21,7 @@ use Symfony\Component\Yaml\Yaml;
  * and nothing more, so a tracked file whose working-tree edits are never
  * committed still passes. Its path list names only the files this branch newly
  * commits — the ones previously reachable through a machine-local
- * `.git/info/exclude` line. `.mcp.json` is absent because it has been tracked
- * since FLIX-192 and was never at risk of that; its contents are pinned by the
+ * `.git/info/exclude` line. `.mcp.json` is absent because it was never at risk of that; its contents are pinned by the
  * server assertion below instead.
  */
 

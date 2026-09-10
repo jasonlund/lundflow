@@ -64,20 +64,6 @@ describe('feedback-router hook firing', function (): void {
         // Assert
         expect($output)->toContain('[feedback-router]');
     });
-
-    it('fires when a comment attachment landed recently even with a trivial prompt', function (): void {
-        // Arrange
-        $cwd = freshHookCwd();
-        $commentsDir = $cwd.'/.context/attachments/comments';
-        mkdir($commentsDir, 0777, true);
-        file_put_contents($commentsDir.'/x.md', "diff comment\n");
-
-        // Act
-        $output = runFeedbackRouterHook('ok', $cwd);
-
-        // Assert
-        expect($output)->toContain('[feedback-router]');
-    });
 });
 
 describe('feedback-router hook silence', function (): void {
@@ -98,6 +84,35 @@ describe('feedback-router hook silence', function (): void {
 
         // Act
         $output = runFeedbackRouterHook('what time is it', $cwd);
+
+        // Assert
+        expect(Str::trim($output))->toBe('');
+    });
+
+    it('stays silent on a trivial prompt even when a comment attachment exists', function (): void {
+        // A recent diff-comment attachment was a Conductor-only signal. The kit
+        // supports LaborForest + Solo, which have no equivalent, so the file is
+        // noise rather than evidence of feedback.
+        // Arrange
+        $cwd = freshHookCwd();
+        mkdir($cwd.'/.context/attachments/comments', 0777, true);
+        file_put_contents($cwd.'/.context/attachments/comments/x.md', "diff comment\n");
+
+        // Act
+        $output = runFeedbackRouterHook('ok', $cwd);
+
+        // Assert
+        expect(Str::trim($output))->toBe('');
+    });
+
+    it('stays silent on a background-task notification that reads like feedback', function (): void {
+        // A finished background task arrives as a prompt, and its summary routinely
+        // carries "review" or "change" — words the user never wrote.
+        // Arrange
+        $cwd = freshHookCwd();
+
+        // Act
+        $output = runFeedbackRouterHook(backgroundTaskNotification('Review the changed files'), $cwd);
 
         // Assert
         expect(Str::trim($output))->toBe('');

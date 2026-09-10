@@ -64,7 +64,7 @@ describe('ask-user-question guard blocking', function (): void {
     });
 
     // The deny message is the third place this rule is discoverable, after
-    // project.md and the Pest guard — and the only one an agent meets at the
+    // the workflow guideline layer and the Pest guard — and the only one an agent meets at the
     // moment it gets it wrong. So it has to teach the alternative, not just
     // refuse: the substrings below pin that intent without pinning the wording,
     // which would make every rephrasing a test failure.
@@ -77,7 +77,7 @@ describe('ask-user-question guard blocking', function (): void {
 
         // Assert
         expect($result->errorOutput())->toContain('plain markdown')
-            ->and($result->errorOutput())->toContain('.ai/guidelines/project.md')
+            ->and($result->errorOutput())->toContain('.ai/guidelines/lundflow-workflow.md')
             ->and($result->errorOutput())->toContain('Asking the user a question');
     });
 });

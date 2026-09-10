@@ -1,5 +1,4 @@
 ---
-name: review:run
 description: Orchestrates the full PR review loop end-to-end with confirmation gates — optional cross-slice refactor sweep, then create-pr → debrief → human → suite → process → delta review of the fixes. Each stage pauses for approval before the next.
 ---
 
@@ -9,29 +8,30 @@ Runs the review pipeline as one guided sequence. Drive each stage **in order**,
 pausing at the ⏸ gates for the user. Each stage's mechanics live in its own
 command — **defer to that file, do not reimplement it here.**
 
-Loop: `[cross-slice sweep?]` → `/review:create-pr` → `/review:debrief` →
-`/review:human` → `/review:suite` → `/review:process` → `[delta review]`.
+Loop: `[cross-slice sweep?]` → `/lundflow:review:create-pr` → `/lundflow:review:debrief` →
+`/lundflow:review:human` → `/lundflow:review:suite` → `/lundflow:review:process` → `[delta review]`.
 
 ## Input
 - **PR number** — optional, auto-detected from the branch.
-- **Ticket ID** — `FLIX-XXX`, optional.
+- **Ticket ID** — `{PREFIX}-XXX`, where `{PREFIX}` is the *Ticket prefix* setting;
+  optional.
 
 ## Sequence
 
 ### Stage 0: Cross-slice refactor sweep (conditional)
 Decide whether the branch spans **more than one TDD slice**. Ticket count is
-irrelevant: `tdd-refactorer` is spawned per slice with only that slice's files
-(`.claude/skills/tdd/SKILL.md`, "Step 3 — REFACTOR"), so one ticket of many
+irrelevant: `lundflow:tdd-refactorer` is spawned per slice with only that slice's files
+(`${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md`, "Step 3 — REFACTOR"), so one ticket of many
 slices has the same blind spot as many tickets. Expect this to fire **routinely, by design** — a
-slice is only 2–6 tests (`.claude/skills/tdd/SKILL.md`), so most non-trivial PRs
+slice is only 2–6 tests (`${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md`), so most non-trivial PRs
 span several; a high hit rate is the gate working, not a misfire.
 
 1. **Authoritative source — the tickets' TDD Slice Backlogs.** Resolve **every**
-   `FLIX-\d+` id in the branch name, not just the first: read each body
-   (`plan-slices` appends the backlog, one `### Slice N —` block per slice) and
+   `{PREFIX}-\d+` id in the branch name, not just the first: read each body
+   (`lundflow:plan-slices` appends the backlog, one `### Slice N —` block per slice) and
    **sum** the slice counts across all of them. That sum decides. This is
    deliberately broader than Ticket ID Auto-Extraction
-   (`.claude/skills/review-pipeline/SKILL.md`), whose first-match-only rule names
+   (`${CLAUDE_PLUGIN_ROOT}/skills/review-pipeline/SKILL.md`), whose first-match-only rule names
    one ticket rather than counts work — don't lean on that contract here. A sum of
    **0** (no backlog, or a "zero TDD slices" verdict) means the backlog can't
    answer: fall through to step 2, then step 3 — never treat it as single-slice.
@@ -44,22 +44,22 @@ span several; a high hit rate is the gate working, not a misfire.
 3. **Still ambiguous → run the sweep.** A needless sweep costs one green-gated
    refactor pass; a missed one ships the duplication this stage exists to catch.
 
-- **Multi-slice** → invoke the `review-tdd-cross-slice` skill (whole-PR REFACTOR
+- **Multi-slice** → invoke the `lundflow:review-tdd-cross-slice` skill (whole-PR REFACTOR
   sweep). It runs its **own** green-precondition + approval gate — let it.
 - **Single-slice** → skip and say so (that one slice's own REFACTOR saw everything).
 
 ### Stage 1: create-pr  ⏸
-If the branch has **no open PR**, follow `.claude/commands/review/create-pr.md`
+If the branch has **no open PR**, follow `${CLAUDE_PLUGIN_ROOT}/commands/review/create-pr.md`
 (lint → commit → push → open). Show the drafted title/body and **pause for
 approval before opening**. If a PR already exists, skip this stage.
 
 ### Stage 2: debrief  ⏸
-Follow `.claude/commands/review/debrief.md` — plain-language summary of the branch +
+Follow `${CLAUDE_PLUGIN_ROOT}/commands/review/debrief.md` — plain-language summary of the branch +
 ticket-scope check. **Pause** so the user reads it before the engines dig for
 defects.
 
 ### Stage 3: human  ⏸
-Follow `.claude/commands/review/human.md` — the Linear diff link, the wait while a
+Follow `${CLAUDE_PLUGIN_ROOT}/commands/review/human.md` — the Linear diff link, the wait while a
 person reads the diff and submits their review, and the ingest of what comes back.
 **Pause** for the whole read: the loop moves on only when the reviewer says they
 are done.
@@ -77,7 +77,7 @@ move it after them:
   engines and the full suite have run, not after them.
 
 ### Stage 4: suite
-Follow `.claude/commands/review/suite.md` — runs both engines (`/review:claude` +
+Follow `${CLAUDE_PLUGIN_ROOT}/commands/review/suite.md` — runs both engines (`/lundflow:review:claude` +
 CodeRabbit) and posts each to the PR as its own review. No pause — this is the
 machine work.
 
@@ -86,7 +86,7 @@ machine work.
 ```bash
 PRE_FIX_SHA=$(git rev-parse HEAD)
 ```
-Then follow `.claude/commands/review/process.md` — triage the posted feedback, present
+Then follow `${CLAUDE_PLUGIN_ROOT}/commands/review/process.md` — triage the posted feedback, present
 one numbered list carrying your recommendations, take the user's overrides, dispatch
 fixers. Already interactive.
 
@@ -100,9 +100,10 @@ and nothing upstream is looking at it. This stage closes that.
 
 1. **Compute the delta.** `git diff {PRE_FIX_SHA}..HEAD`. Empty (every item skipped,
    or Stage 5 never ran) → skip this stage and say so.
-2. **Re-run the deterministic gates** (Pint, Rector scoped to the changed files, the
-   full Pest suite). Stage 5's fixers only ran filtered tests.
-3. **Dispatch ONE focused reviewer** over that delta — `review-bug-hunter` by
+2. **Re-run the deterministic gates** (the *Finalize gates (backend)* setting scoped
+   to the changed files, then the *Backend test (full)* setting). Stage 5's fixers
+   only ran filtered tests.
+3. **Dispatch ONE focused reviewer** over that delta — `lundflow:review-bug-hunter` by
    default, since fix regressions are overwhelmingly failure-mode bugs rather than
    convention drift. Give it:
    - the delta diff **as the only thing in scope** — state plainly that the base

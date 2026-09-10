@@ -14,7 +14,7 @@ use Tests\Support\ToolkitFiles;
  * six copies of a round template, none of them the source of truth. Copies drift
  * silently: an agent reading a stale one still renders a round, the user still
  * answers, and nothing reports that the format it used was superseded. So the
- * procedure is written ONCE in `.ai/guidelines/project.md` and every asking site
+ * procedure is written ONCE in `.ai/guidelines/lundflow-workflow.md` and every asking site
  * points at it by name.
  *
  * Three commitments, all static: the guideline source carries the **section**
@@ -26,12 +26,12 @@ use Tests\Support\ToolkitFiles;
  * is sanctioned nowhere on the instruction surface, no site keeps a private copy
  * of the round template, `/map` names the rule among the standing conventions it
  * routes to, and the `PreToolUse` guard that refuses the picker is both
- * registered in `.claude/settings.json` and documented in the hooks README. The
+ * registered in the plugin's `hooks/hooks.json` and documented in the hooks README. The
  * last one is the one that would otherwise pass on a script nobody wired in.
  *
  * The last three close the one hole the rest would leave open. A rule stated as an
  * **always** survives exactly as long as no site is allowed an exception, and
- * `/review:process` had one: its `DISCUSS` bucket existed precisely so an item
+ * `/lundflow:review:process` had one: its `DISCUSS` bucket existed precisely so an item
  * would NOT stand on silence, and its Phase 2 gate held the whole run until the
  * user named every such number. Two contradictory contracts then govern the same
  * reply — silence locks, silence waits — and which one an agent follows is decided
@@ -45,7 +45,7 @@ use Tests\Support\ToolkitFiles;
  * work renders a **decision round** (the `Qn` template, defined in the guideline
  * source and nowhere else); review feedback renders a **disposition list**
  * (`N. [SEVERITY]` over a bare `path:line`, with `Issue`/`Fix`/`Why` slots and a
- * lean), whose shape stays in `/review:process`, its only user. Conflating the
+ * lean), whose shape stays in `/lundflow:review:process`, its only user. Conflating the
  * two wrote a real contradiction into that command: it cites "the canonical
  * format" and then shows a different one — and it CANNOT show that one, because
  * the round glyph is single-sourced by the guard below. So the guideline section
@@ -63,7 +63,7 @@ use Tests\Support\ToolkitFiles;
  *
  * NB: the round template's glyphs live in PHP string literals as escaped
  * codepoints, never as literal characters, so a later guard forbidding those
- * glyphs under `.claude/` can never read this file's patterns as an offence.
+ * glyphs under `plugins/` can never read this file's patterns as an offence.
  */
 
 /**
@@ -148,7 +148,7 @@ $sectionOf = function (string $file, string $heading): string {
 /**
  * One `## ` section of the guideline source, the file most of these checks read.
  */
-$guidelineSection = fn (string $heading): string => $sectionOf('scaffold/.ai/guidelines/lundflow.md', $heading);
+$guidelineSection = fn (string $heading): string => $sectionOf('scaffold/.ai/guidelines/lundflow-workflow.md', $heading);
 
 /**
  * The picker tool this repo bans outright, by its exact tool name.
@@ -167,7 +167,7 @@ $hookScript = 'plugins/lundflow/hooks/block-ask-user-question.sh';
 /**
  * Every line of the **instruction surface** — the prose an agent reads as orders.
  *
- * Deliberately narrower than `.claude/`. `.claude/hooks/` is machinery, and
+ * Deliberately narrower than `plugins/`. A plugin's `hooks/` is machinery, and
  * machinery has to name what it blocks: the hooks README's table row carries the
  * literal tool name for the same reason the destructive-git row carries
  * `reset --hard`. Excluding the one README by filename would rot the moment the
@@ -279,7 +279,7 @@ describe('canonical question procedure', function () use ($anchor, $guidelineSec
         // `Qn` round template and then governs every asking site, including the one
         // whose items cannot be written that way. A review item carries a
         // `[SEVERITY]` tag, a bare `path:line`, who flagged it, `Issue`/`Fix`/`Why`
-        // slots and a lean — none of which fits two lines. So `/review:process` cites
+        // slots and a lean — none of which fits two lines. So `/lundflow:review:process` cites
         // "the canonical format" and then shows a different one, and it cannot show
         // the cited one, because the sweep below single-sources the round glyph. Two
         // contradictory instructions in one file, with nothing to report it.
@@ -456,7 +456,7 @@ describe('instruction surface prose', function () use ($pickerTool, $singleForma
         // Arrange
         $glyph = '~\x{2753}~u';
         $lines = $instructionSurfaceLines();
-        $canonical = ToolkitFiles::read('scaffold/.ai/guidelines/lundflow.md');
+        $canonical = ToolkitFiles::read('scaffold/.ai/guidelines/lundflow-workflow.md');
 
         // Act
         $offenders = collect($lines)
@@ -567,9 +567,9 @@ describe('review gate silence exception', function () use ($reviewGate, $reviewG
         // than a hole in this guard. That section triages a person's own line-by-line
         // review, where an item the pipeline judges wrong — or cannot classify — holds
         // the gate instead of standing on silence, because a human who read the diff is
-        // not the cheap-and-numerous entry clause 3 was written for. FLIX-300 landed
-        // that round while this ban was in review, and the two contracts are reconciled
-        // in *Asking the user a question* in `.ai/guidelines/project.md`, not here.
+        // not the cheap-and-numerous entry clause 3 was written for. The human round
+        // landed while this ban was in review, and the two contracts are reconciled
+        // in *Asking the user a question* in `.ai/guidelines/lundflow-workflow.md`, not here.
         // Scoped BY SECTION, never by line number: the exemption then tracks what the
         // prose is about, so moving or growing the section cannot silently widen it,
         // and renaming the section fails loudly below rather than exempting nothing.
@@ -664,7 +664,7 @@ describe('review gate numbering scope', function () use ($reviewGate, $minimumGa
     it('scopes an item number across rounds rather than to one run', function () use ($reviewGate, $minimumGateLines): void {
         // Clause 1 of the contract makes a number durable for the whole session, so a
         // later round continues the sequence. The gate scopes it to the run instead,
-        // and `/review:run` presents a second, delta list under that rule — which
+        // and `/lundflow:review:run` presents a second, delta list under that rule — which
         // restarts at 1. Item 3 then names two different findings in one session, and
         // an override reply of `skip 3` is ambiguous by construction: nothing in the
         // command, and nothing the user can see, says which 3 was meant.

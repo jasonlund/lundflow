@@ -21,14 +21,14 @@ use Tests\Support\ToolkitFiles;
  *
  * Five parts, all static: the **roster** (which agent files exist, and who
  * names them), the **contract** (which sections of
- * `.claude/skills/review-pipeline/SKILL.md` survive, and what they say), the
- * **inventory** (whether `.claude/skills/map/SKILL.md` — the router a human opens
+ * `plugins/lundflow/skills/review-pipeline/SKILL.md` survive, and what they say), the
+ * **inventory** (whether `plugins/lundflow/skills/map/SKILL.md` — the router a human opens
  * to find a file — both counts and names the files that are actually on disk),
  * the **renames** (whether every file that routes to a renamed stage names that
  * stage as it is called now), and the **stage contracts** (whether a command
  * file carries the commitments the stage it serves is defined by — its own, or
  * a stage's whose work it does under a flag, the way
- * `/review:process --human-round` is where the human stage's whole ingest is
+ * `/lundflow:review:process --human-round` is where the human stage's whole ingest is
  * written down).
  *
  * A rename goes wrong more quietly still. A retired name at least dangles —
@@ -39,7 +39,7 @@ use Tests\Support\ToolkitFiles;
  *
  * A stage contract fails more quietly again, because the file is there and
  * dispatches fine — only a step is missing from its prose, so the agent never
- * does it and nothing reports that it did not. If `/review:human` stopped saying
+ * does it and nothing reports that it did not. If `/lundflow:review:human` stopped saying
  * that a Linear review must be submitted rather than drafted, the reviewer would
  * draft one, the collect would come back empty, and the loop would carry on to
  * the engines as though nobody had commented.
@@ -81,7 +81,7 @@ $retiredAgents = [
 ];
 
 /**
- * The agents the engine still runs — the whole of `.claude/agents/`.
+ * The agents the engine still runs — the whole of `plugins/lundflow/agents/`.
  *
  * @var list<string>
  */
@@ -110,7 +110,7 @@ $survivingAgents = [
  *
  * `.ai/guidelines` is swept for a reason the other two roots don't share: it is
  * the SOURCE `php artisan boost:install --guidelines` generates `CLAUDE.md` and
- * `AGENTS.md` from. A retired name left in `project.md` is copied verbatim into
+ * `AGENTS.md` from. A retired name left in a guideline layer is copied verbatim into
  * both generated files on the next regeneration, so catching it at the generated
  * copies would be catching it one step too late.
  *
@@ -132,8 +132,8 @@ $scanCommittedLines = fn (): array => ToolkitFiles::scanLines(
 $contractSource = fn (): string => ToolkitFiles::read('plugins/lundflow/skills/review-pipeline/SKILL.md');
 
 /**
- * One committed `/review:*` command, read from disk by the name it is invoked
- * under — `$reviewCommandSource('debrief')` reads the file `/review:debrief`
+ * One committed `/lundflow:review:*` command, read from disk by the name it is invoked
+ * under — `$reviewCommandSource('debrief')` reads the file `/lundflow:review:debrief`
  * dispatches to.
  *
  * Takes the name rather than resolving a path per command on purpose: a guard is
@@ -180,7 +180,7 @@ $withinPhase = function (int $phase, string ...$inner): string {
  * A pattern that must match INSIDE one `### Stage N` block of the orchestrator.
  *
  * The `### Stage N` sibling of `$withinPhase`, temper and all, for the same
- * reason: a stage's own commitment has to sit in that stage. `/review:run` is
+ * reason: a stage's own commitment has to sit in that stage. `/lundflow:review:run` is
  * one file of seven near-identical blocks, so a file-wide pattern is satisfied
  * by any of them — and prose that explains a stage from two stages away is
  * prose the agent reads after it has already run the stage.
@@ -288,7 +288,7 @@ $stageHeadings = function (string $source): Collection {
  *
  * Recursive, like the map's own command count: a command in a subdirectory is
  * namespaced by it rather than hidden — `review/claude.md` is invoked as
- * `/review:claude` — so the separator becomes the `:` and the extension goes.
+ * `/lundflow:review:claude` — so the separator becomes the `:` and the extension goes.
  *
  * @return Collection<int, string>
  */
@@ -377,7 +377,7 @@ describe('review agent roster', function () use ($scanCommittedLines, $retiredAg
 describe('review-pipeline contract sections', function () use ($contractSource): void {
     it('keeps the contract sections the new engine uses', function () use ($contractSource): void {
         // Regression guard: every agent the engine still dispatches is handed
-        // these sections by name from `/review:claude`, so deleting one leaves a
+        // these sections by name from `/lundflow:review:claude`, so deleting one leaves a
         // dispatch pointing at a section that is not there — with no error on
         // either side. Heading patterns are delimited by `~`, not `#`, because a
         // markdown heading opens on the delimiter character itself.
@@ -465,7 +465,7 @@ describe('review-pipeline contract rules', function () use ($contractSource, $re
     });
 
     it('grants no permission to report a pre-existing issue', function () use ($contractSource, $reviewCommandSource): void {
-        // `/review:claude` lists pre-existing issues among the things a reviewer
+        // `/lundflow:review:claude` lists pre-existing issues among the things a reviewer
         // stays silent on. A contract that also grades them — allows them when
         // tagged, or caps them at a severity — hands the same agent two rules and
         // lets it pick. Giving a pre-existing issue a severity IS telling the
@@ -540,7 +540,7 @@ describe('map skill inventory', function () use ($mapSource, $statedCount, $coun
     it('states the command count it actually ships', function () use ($mapSource, $statedCount, $countToolkitFiles): void {
         // Recursive, unlike the agent sweep: a command in a subdirectory is
         // namespaced by it rather than hidden — `review/claude.md` is invoked as
-        // `/review:claude` — so a depth-0 count would miss most of them.
+        // `/lundflow:review:claude` — so a depth-0 count would miss most of them.
         // Arrange
         $shipped = $countToolkitFiles('plugins/*/commands', '*.md');
 
@@ -594,9 +594,8 @@ describe('review debrief rename', function () use (
         // Arrange
         $source = $reviewCommandSource('debrief');
         $required = [
-            'the frontmatter names the command `review:debrief`' => '~^name:\s*review:debrief\s*$~m',
             'the closing handoff emits the Linear diff link `linear.review/{owner}/{repo}/pull/{n}`' => '~linear\.review/\{[^}\n]+\}/\{[^}\n]+\}/pull/\{[^}\n]+\}~',
-            'the closing `Next:` line points at the human-review stage' => '~^Next:\s*/review:human\b~m',
+            'the closing `Next:` line points at the human-review stage' => '~^Next:\s*/lundflow:review:human\b~m',
         ];
 
         // Act
@@ -608,7 +607,7 @@ describe('review debrief rename', function () use (
     });
 
     it('hands the loop from create-pr to the debrief stage', function () use ($reviewCommandSource): void {
-        // `/review:create-pr` states the handoff twice — in the chain sentence a
+        // `/lundflow:review:create-pr` states the handoff twice — in the chain sentence a
         // reader skims, and in the closing line the agent actually prints — and
         // the two drift apart independently. Neither can fail loudly: a stale
         // name routes the author to a command that will belong to a different
@@ -617,8 +616,8 @@ describe('review debrief rename', function () use (
         // Arrange
         $source = $reviewCommandSource('create-pr');
         $required = [
-            'the pipeline chain sentence routes create-pr into `/review:debrief`' => '~`/review:create-pr`\*\*[^\n]*→\s*`/review:debrief`~',
-            'the closing `Next:` line names `/review:debrief`' => '~^Next:\s*/review:debrief\s*$~m',
+            'the pipeline chain sentence routes create-pr into `/lundflow:review:debrief`' => '~`/lundflow:review:create-pr`\*\*[^\n]*→\s*`/lundflow:review:debrief`~',
+            'the closing `Next:` line names `/lundflow:review:debrief`' => '~^Next:\s*/lundflow:review:debrief\s*$~m',
         ];
 
         // Act
@@ -634,12 +633,12 @@ describe('review debrief rename', function () use (
         // is on the PR. Naming a retired command there credits the wrong stage
         // to every reader of the comment, and nothing on GitHub can reveal the
         // mistake — the finding reads as authoritative either way. Scoped to the
-        // Spec section so a `/review:debrief` mention elsewhere in the file
+        // Spec section so a `/lundflow:review:debrief` mention elsewhere in the file
         // cannot stand in for the template line itself.
         // Arrange
         $section = $contractSection($reviewCommandSource('add'), 'Spec — does it do what the ticket asked?');
         $required = [
-            'the Spec report template footer reads `_Found by: /review:debrief_`' => '~^_Found by:\s*/review:debrief_\s*$~m',
+            'the Spec report template footer reads `_Found by: /lundflow:review:debrief_`' => '~^_Found by:\s*/lundflow:review:debrief_\s*$~m',
         ];
 
         // Act
@@ -651,7 +650,7 @@ describe('review debrief rename', function () use (
     });
 
     it('names the debrief stage as the spec-axis owner in the claude command', function () use ($reviewCommandSource): void {
-        // `/review:claude` declines the spec axis twice by naming who owns it —
+        // `/lundflow:review:claude` declines the spec axis twice by naming who owns it —
         // once telling the agent not to review it, once telling the report's
         // reader where it went. Both are prose obeyed at dispatch time, so a
         // stale owner points at a command that will be doing something else
@@ -660,8 +659,8 @@ describe('review debrief rename', function () use (
         // Arrange
         $source = $reviewCommandSource('claude');
         $required = [
-            'the Input section assigns the spec axis to `/review:debrief`' => '~the spec axis itself belongs to\s+`/review:debrief`~',
-            'the Spec section names `/review:debrief` Phase 3 as the axis owner' => '~^`/review:debrief` Phase 3 owns the spec axis~m',
+            'the Input section assigns the spec axis to `/lundflow:review:debrief`' => '~the spec axis itself belongs to\s+`/lundflow:review:debrief`~',
+            'the Spec section names `/lundflow:review:debrief` Phase 3 as the axis owner' => '~^`/lundflow:review:debrief` Phase 3 owns the spec axis~m',
         ];
 
         // Act
@@ -680,10 +679,10 @@ describe('review debrief rename', function () use (
         // to the next agent that loads it, and none can fail loudly — the
         // author is sent to a command that is about to belong to a different
         // stage, and the loop still renders.
-        // Every pattern states the POSITIVE commitment — `/review:debrief`
-        // holds the slot immediately after `/review:create-pr`, and owns the
-        // spec pass — never the absence of `/review:human`. A genuinely new
-        // `/review:human` stage lands between debrief and suite shortly, so a
+        // Every pattern states the POSITIVE commitment — `/lundflow:review:debrief`
+        // holds the slot immediately after `/lundflow:review:create-pr`, and owns the
+        // spec pass — never the absence of `/lundflow:review:human`. A genuinely new
+        // `/lundflow:review:human` stage lands between debrief and suite shortly, so a
         // guard forbidding that name would have to be deleted the week it was
         // written.
         // Adjacency is spelled `[^`]` rather than `[^\n]` so a rewrapped chain
@@ -692,17 +691,17 @@ describe('review debrief rename', function () use (
         // Arrange
         $required = [
             'plugins/lundflow/commands/review/suite.md' => [
-                'the loop-position paragraph runs create-pr into `/review:debrief` and sends the reader there for the plain-language read' => '~`/review:create-pr`[^`]{0,40}→[^`]{0,40}`/review:debrief`.{0,400}Run\s+`/review:debrief`\s+first~s',
+                'the loop-position paragraph runs create-pr into `/lundflow:review:debrief` and sends the reader there for the plain-language read' => '~`/lundflow:review:create-pr`[^`]{0,40}→[^`]{0,40}`/lundflow:review:debrief`.{0,400}Run\s+`/lundflow:review:debrief`\s+first~s',
             ],
             'plugins/lundflow/commands/review/process.md' => [
-                'the closing-stage chain sentence runs `/review:create-pr` into `/review:debrief`' => '~`/review:create-pr`[^`]{0,40}→[^`]{0,40}`/review:debrief`~',
+                'the closing-stage chain sentence runs `/lundflow:review:create-pr` into `/lundflow:review:debrief`' => '~`/lundflow:review:create-pr`[^`]{0,40}→[^`]{0,40}`/lundflow:review:debrief`~',
             ],
             'plugins/lundflow/commands/review/run.md' => [
-                'the `Loop:` line runs `/review:create-pr` into `/review:debrief`' => '~`/review:create-pr`[^`]{0,40}→[^`]{0,40}`/review:debrief`~',
+                'the `Loop:` line runs `/lundflow:review:create-pr` into `/lundflow:review:debrief`' => '~`/lundflow:review:create-pr`[^`]{0,40}→[^`]{0,40}`/lundflow:review:debrief`~',
                 'the frontmatter `description:` the harness displays names debrief after create-pr' => '~^description:[^\n]*\bcreate-pr\s*→\s*debrief\b~m',
             ],
             'plugins/lundflow/skills/plan-breakdown/SKILL.md' => [
-                'the acceptance-criteria rule credits the spec pass to `/review:debrief`' => "~`/review:debrief`'s spec pass~",
+                'the acceptance-criteria rule credits the spec pass to `/lundflow:review:debrief`' => "~`/lundflow:review:debrief`'s spec pass~",
             ],
         ];
         $sources = $requiredSources($required);
@@ -725,7 +724,7 @@ describe('review debrief rename', function () use (
         $source = $mapSource();
         $required = [
             'the main-flow diagram runs create-pr into debrief' => '~create-pr\s*─▶\s*debrief~',
-            'the review chain prose runs `/review:create-pr` into `/review:debrief`' => '~`/review:create-pr`[^\n]*→\s*`/review:debrief`~',
+            'the review chain prose runs `/lundflow:review:create-pr` into `/lundflow:review:debrief`' => '~`/lundflow:review:create-pr`[^\n]*→\s*`/lundflow:review:debrief`~',
         ];
 
         // Act
@@ -741,7 +740,7 @@ describe('human review stage', function () use ($reviewCommandSource, $withinPha
     it('tells the reviewer to put every point on a line', function () use ($reviewCommandSource, $withinPhase): void {
         // A submitted review carries line-anchored comments AND a body, and only
         // the first reaches the pipeline: `review-feedback-collector` parses a
-        // review body for `/review:add`-shaped findings alone, so a person's prose
+        // review body for `/lundflow:review:add`-shaped findings alone, so a person's prose
         // summary yields no items at all. Nothing shows the reviewer that. The
         // review submitted, GitHub renders the body, and the ingest reports zero —
         // so the one reader who could correct it concludes the pipeline lost their
@@ -790,15 +789,14 @@ describe('human review stage', function () use ($reviewCommandSource, $withinPha
         // Arrange
         $source = $reviewCommandSource('human');
         $required = [
-            'the frontmatter names the command `review:human`' => '~^name:\s*review:human\s*$~m',
             'Phase 1 hands over the Linear diff link `linear.review/{owner}/{repo}/pull/{n}` and waits for a submitted review' => $withinPhase(
                 1,
                 'linear\.review/\{[^}\n]+\}/\{[^}\n]+\}/pull/\{[^}\n]+\}',
                 '\bsubmit',
             ),
-            'Phase 2 delegates the ingest to `/review:process --human-round`' => $withinPhase(
+            'Phase 2 delegates the ingest to `/lundflow:review:process --human-round`' => $withinPhase(
                 2,
-                '`?/review:process\s+--human-round',
+                '`?/lundflow:review:process\s+--human-round',
             ),
             'the zero-item path names a review saved as a draft — never synced to GitHub, so the pipeline cannot see it' => '~\bdraft\b(?:(?!\n\n).){0,400}(?:GitHub|pipeline)~is',
         ];
@@ -912,12 +910,12 @@ describe('review run stage sequence', function () use (
         // Arrange
         $required = [
             'plugins/lundflow/commands/review/run.md' => [
-                'the `Loop:` line runs `/review:debrief` into `/review:human` into `/review:suite`' => '~^Loop:.{0,300}`/review:debrief`[^`]{0,40}→[^`]{0,40}`/review:human`[^`]{0,40}→[^`]{0,40}`/review:suite`~ms',
+                'the `Loop:` line runs `/lundflow:review:debrief` into `/lundflow:review:human` into `/lundflow:review:suite`' => '~^Loop:.{0,300}`/lundflow:review:debrief`[^`]{0,40}→[^`]{0,40}`/lundflow:review:human`[^`]{0,40}→[^`]{0,40}`/lundflow:review:suite`~ms',
                 'the frontmatter `description:` the harness displays names human between debrief and suite' => '~^description:[^\n]*\bdebrief\s*→\s*human\s*→\s*suite\b~m',
             ],
             'plugins/lundflow/skills/map/SKILL.md' => [
                 'the main-flow diagram runs debrief into human into suite' => '~debrief\s*─▶\s*human\s*─▶\s*suite~',
-                'the review chain prose runs `/review:debrief` into `/review:human` into `/review:suite`' => '~`/review:debrief`.{0,200}→\s*`/review:human`.{0,200}→\s*`/review:suite`~s',
+                'the review chain prose runs `/lundflow:review:debrief` into `/lundflow:review:human` into `/lundflow:review:suite`' => '~`/lundflow:review:debrief`.{0,200}→\s*`/lundflow:review:human`.{0,200}→\s*`/lundflow:review:suite`~s',
             ],
         ];
         $sources = $requiredSources($required);
@@ -978,7 +976,7 @@ describe('review run stage sequence', function () use (
         // and both of its stage references are to stages the insert renumbers. A
         // rule naming the wrong number is worse than a missing one: "Stage 5 is
         // the one exception — it has no command file of its own" now describes
-        // `/review:process`, which has one, so the next agent to read it either
+        // `/lundflow:review:process`, which has one, so the next agent to read it either
         // reimplements a stage that already exists or leaves the delta stage's
         // mechanics somewhere the file says they do not belong.
         // Each pattern is tempered to the bullet that owes it, because the two
@@ -1009,9 +1007,9 @@ describe('human round contract', function () use (
     $missingAcrossFiles,
 ): void {
     it('documents the human-round flag in the command that is invoked with it', function () use ($reviewCommandSource, $contractSection, $missingAcrossFiles): void {
-        // `/review:human` Phase 2 hands its whole ingest to
-        // `/review:process --human-round`, and an undocumented flag is a no-op
-        // rather than an error: `/review:process` reads an argument it was never
+        // `/lundflow:review:human` Phase 2 hands its whole ingest to
+        // `/lundflow:review:process --human-round`, and an undocumented flag is a no-op
+        // rather than an error: `/lundflow:review:process` reads an argument it was never
         // told about as nothing at all, runs the bot round it already knew how to
         // run, collects `isBot` items only, and reports zero — with the
         // reviewer's own comments sitting on the PR unread. Nothing on either
@@ -1028,7 +1026,7 @@ describe('human round contract', function () use (
                 'the `## Input` section documents the `--human-round` flag' => '~--human-round~',
             ],
             'plugins/lundflow/commands/review/human.md' => [
-                'Phase 2 invokes the ingest as `/review:process --human-round`' => '~/review:process\s+--human-round~',
+                'Phase 2 invokes the ingest as `/lundflow:review:process --human-round`' => '~/lundflow:review:process\s+--human-round~',
             ],
         ];
         $sources = collect([
@@ -1260,8 +1258,8 @@ describe('human round contract', function () use (
     it('runs debrief into human in the last two chain sentences', function () use ($requiredSources, $missingAcrossFiles): void {
         // These two sentences are the last places the pipeline order is written
         // down, and both are read at the moment someone is deciding what to run
-        // next: `/review:process` opens by naming the loop it closes, and
-        // `/review:suite` opens by placing itself in it. A chain that still steps
+        // next: `/lundflow:review:process` opens by naming the loop it closes, and
+        // `/lundflow:review:suite` opens by placing itself in it. A chain that still steps
         // straight from debrief to the engines teaches a reader the pipeline that
         // used to exist, and the human read is skipped by someone following the
         // file exactly as written — with no error anywhere, because every stage
@@ -1275,10 +1273,10 @@ describe('human round contract', function () use (
         // Arrange
         $required = [
             'plugins/lundflow/commands/review/process.md' => [
-                'the opening chain sentence runs `/review:create-pr` into `/review:debrief` into `/review:human`' => '~`/review:create-pr`[^`]{0,80}→[^`]{0,80}`/review:debrief`[^`]{0,80}→[^`]{0,80}`/review:human`~',
+                'the opening chain sentence runs `/lundflow:review:create-pr` into `/lundflow:review:debrief` into `/lundflow:review:human`' => '~`/lundflow:review:create-pr`[^`]{0,80}→[^`]{0,80}`/lundflow:review:debrief`[^`]{0,80}→[^`]{0,80}`/lundflow:review:human`~',
             ],
             'plugins/lundflow/commands/review/suite.md' => [
-                'the `Loop position:` sentence runs `/review:debrief` into `/review:human` into `/review:suite`' => '~^Loop position:.{0,300}`/review:debrief`[^`]{0,120}→[^`]{0,120}`/review:human`[^`]{0,120}→[^`]{0,120}`/review:suite`~ms',
+                'the `Loop position:` sentence runs `/lundflow:review:debrief` into `/lundflow:review:human` into `/lundflow:review:suite`' => '~^Loop position:.{0,300}`/lundflow:review:debrief`[^`]{0,120}→[^`]{0,120}`/lundflow:review:human`[^`]{0,120}→[^`]{0,120}`/lundflow:review:suite`~ms',
             ],
         ];
         $sources = $requiredSources($required);

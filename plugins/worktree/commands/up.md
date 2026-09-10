@@ -1,5 +1,4 @@
 ---
-name: worktree:up
 description: Take a Linear ticket to a provisioned LaborForest worktree in one invocation — derive the branch, add the workspace, register it in Solo, run the `up` workflow, and read the verdict off the run log.
 ---
 
@@ -11,22 +10,25 @@ the run log.**
 
 ## Input
 
-- **`FLIX-NNN`** — the ticket the branch is for. Several tickets: `FLIX-301,FLIX-302`.
+- **`{PREFIX}-NNN`** — the ticket the branch is for, where `{PREFIX}` is the *Ticket
+  prefix* setting (`{prefix}` below is the same prefix lowercased, as a branch carries
+  it). Several tickets: `{PREFIX}-301,{PREFIX}-302`.
 - **A bare branch name** — the fallback for a branch that already exists.
-- **`--workspace <name>`** — the Solo workspace to register under. Default `lundflix`.
+- **`--workspace <name>`** — the Solo workspace to register under. Default: the *Solo
+  workspace* setting.
 
 ```
-/worktree:up FLIX-303
-/worktree:up FLIX-301,FLIX-302
-/worktree:up flix-303-consolidate-the-lab
+/worktree:up {PREFIX}-303
+/worktree:up {PREFIX}-301,{PREFIX}-302
+/worktree:up {prefix}-303-add-the-export-job
 ```
 
 ## Fixed paths
 
 | Thing | Value |
 | --- | --- |
-| primary checkout | `~/Sites/lundflix-v2` |
-| worktree | `~/Sites/lundflix-v2-<branch>` |
+| primary checkout | the *Primary checkout* setting |
+| worktree | the *Primary checkout* path suffixed `-<branch>` |
 | run logs | `<worktree>/.laborforest/ignored/logs/` |
 
 Run every `php artisan` call below **from the primary checkout**: a fresh worktree has
@@ -37,10 +39,10 @@ no `vendor/` until the workflow's Composer step succeeds, so artisan cannot boot
 ## Phase 0: Preconditions
 
 1. **`mcp__laborforest__*` tools are bound.** Absent → HALT, say the LaborForest MCP is
-   not bound in this session, and point the user at README's *Fallback: when the MCP
+   not bound in this session, and point the user at `${CLAUDE_PLUGIN_ROOT}/README.md`'s *Fallback: when the MCP
    doesn't answer* for the by-hand path. Guessing at the GUI is worse than stopping.
-2. `mcp__laborforest__find-project-by-path` with `~/Sites/lundflix-v2` → the project
-   `uuid` the later calls take.
+2. `mcp__laborforest__find-project-by-path` with the *Primary checkout* path → the
+   project `uuid` the later calls take.
 
 ---
 
@@ -64,7 +66,7 @@ no `vendor/` until the workflow's Composer step succeeds, so artisan cannot boot
 3. Capture the branch, apostrophes removed:
    ```bash
    # Linear title: Fix the reviewer's multi-slice bar  →  only the ' comes out
-   BRANCH=$(php artisan lf:branch-name FLIX-301,FLIX-302 'Fix the reviewers multi-slice bar')
+   BRANCH=$(php artisan lf:branch-name {PREFIX}-301,{PREFIX}-302 'Fix the reviewers multi-slice bar')
    ```
    `lf:branch-name` prints the bare branch and nothing else, so `$(…)` captures it
    exactly. It owns the shape — the ids, then a title slug of at most 20 characters cut
@@ -74,7 +76,7 @@ no `vendor/` until the workflow's Composer step succeeds, so artisan cannot boot
 
 **Bare branch name input** — use it as given and skip the derivation.
 
-The worktree is `~/Sites/lundflix-v2-$BRANCH`.
+The worktree is the *Primary checkout* path suffixed `-$BRANCH`.
 
 ---
 
@@ -98,8 +100,8 @@ Register **before** running the workflow. `solo.yml` is committed, so it is pres
 moment the worktree exists, and an `up` that fails then leaves a usable Solo project to
 repair from.
 
-1. `mcp__solo__list_workspaces` → the id of the workspace named `lundflix` (or the
-   `--workspace` value).
+1. `mcp__solo__list_workspaces` → the id of the workspace the *Solo workspace* setting
+   names (or the `--workspace` value).
 2. **That name resolves to nothing → HALT and list the workspace names that do exist.**
    Workspace assignment is create-time only, so a project created in the wrong one
    cannot be moved afterwards.
@@ -175,8 +177,8 @@ Path:      {worktree}
 Solo:      registered in workspace "{workspace}"
 
 One step left, and only you can take it: `solo.yml` commands start **untrusted**, so
-all four processes sit stopped. Trust them in Solo's UI, then start the ones you want —
-`npm:dev` is the one that serves Vite.
+every process in it sits stopped. Trust them in Solo's UI, then start the ones you
+want — the one running `npm run dev` is what serves Vite.
 ```
 
 ---
@@ -186,6 +188,6 @@ all four processes sit stopped. Trust them in Solo's UI, then start the ones you
 - **User-invoked only.** This creates a database and a Herd site; it fires on your word
   alone.
 - Sources this command drives without restating: the steps in
-  `.laborforest/workflows/up.yaml`, README's by-hand fallback and its MCP tool table.
+  `.laborforest/workflows/up.yaml`, `${CLAUDE_PLUGIN_ROOT}/README.md`'s by-hand fallback and its MCP tool table.
 
 $ARGUMENTS

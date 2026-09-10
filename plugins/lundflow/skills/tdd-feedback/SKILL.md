@@ -11,12 +11,12 @@ description: >-
 # TDD Feedback Router
 
 This skill is a **classifier + router**, not a new loop. The RED → GREEN → REFACTOR
-machinery lives in `.claude/skills/tdd/SKILL.md` — this skill only decides *which
+machinery lives in `${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md` — this skill only decides *which
 phase* a piece of feedback enters, then dispatches into the **existing** tdd
-subagents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`) and the **same
-gates**. Do not duplicate the loop; defer all spawn/gate mechanics to `tdd`.
+subagents (`lundflow:tdd-test-writer`, `lundflow:tdd-implementer`, `lundflow:tdd-refactorer`) and the **same
+gates**. Do not duplicate the loop; defer all spawn/gate mechanics to `lundflow:tdd`.
 
-The `tdd` skill fires on "implement / build / add" (new work). This one fires on
+The `lundflow:tdd` skill fires on "implement / build / add" (new work). This one fires on
 feedback against work that is already done. They classify on **different axes**:
 tdd's Step 0 classifies the *stack* (backend / frontend / full-stack); this skill
 classifies the *feedback type* (bug / behavior change / cleanup / non-code).
@@ -34,7 +34,7 @@ classifies the *feedback type* (bug / behavior change / cleanup / non-code).
 The user confirms the chosen route. Only the DIRECT (non-code) branch skips approval.
 
 **Unattended sessions skip the confirmation, not the card** — same fork, same
-detection rule, as `tdd` Step 1: an `[unattended-mode]` notice in this turn's
+detection rule, as `lundflow:tdd` Step 1: an `[unattended-mode]` notice in this turn's
 context means write the classification and card to chat and proceed; no notice
 means gated, as above. Every correctness gate below is unchanged in both modes.
 
@@ -90,14 +90,14 @@ Feedback item in →
 
 | Class        | Subagent(s)                                              | Gates                                                   | Approval shown                                       |
 |--------------|----------------------------------------------------------|---------------------------------------------------------|------------------------------------------------------|
-| BUG          | `tdd-test-writer` → `tdd-implementer` → `tdd-refactorer` | RED fails for right reason · GREEN passes · stays green | RED plan card (attended plan mode / unattended chat) |
+| BUG          | `lundflow:tdd-test-writer` → `lundflow:tdd-implementer` → `lundflow:tdd-refactorer` | RED fails for right reason · GREEN passes · stays green | RED plan card (attended plan mode / unattended chat) |
 | SLICE        | normal tdd loop (Step 1–3)                               | same three tdd gates                                    | RED plan card (attended plan mode / unattended chat) |
-| REFACTOR HAT | `tdd-refactorer` only                                    | precondition green · post-refactor still green          | green-run THEN plan card                             |
+| REFACTOR HAT | `lundflow:tdd-refactorer` only                                    | precondition green · post-refactor still green          | green-run THEN plan card                             |
 | DIRECT       | none                                                     | none                                                    | none                                                 |
 
 ## Reference
 
-- See `.claude/skills/tdd/SKILL.md` for loop mechanics, exact gate wording, and the
+- See `${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md` for loop mechanics, exact gate wording, and the
   plan-card flow — do not duplicate them here.
 - **Integration:** run `review-comments` first to gather + group feedback, then invoke
   this skill **per item**.

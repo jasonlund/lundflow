@@ -4,50 +4,52 @@ description: >-
   Turn an already-written implementation plan into an ordered, test-first TDD
   slice backlog for this Laravel + Inertia + React app. Use when you have one
   ticket/plan (architecture, files, decisions) — a Linear ticket id or a plan file
-  — and need it restructured into behavior slices before running the `tdd` skill.
+  — and need it restructured into behavior slices before running the `lundflow:tdd` skill.
   Planner/critic only — it is opinionated about testability and STOPS at the
-  backlog; it never writes tests or code. The back half of `plan-breakdown`.
+  backlog; it never writes tests or code. The back half of `lundflow:plan-breakdown`.
 ---
 
 # TDD Planner
 
 An implementation plan is written for architecture, files, and decisions — with
 **zero TDD concern**: no behavior slices, no test ordering, no testability seams.
-The `tdd` skill *executes* RED → GREEN → REFACTOR but assumes that translation is
+The `lundflow:tdd` skill *executes* RED → GREEN → REFACTOR but assumes that translation is
 already done. This skill *does the translation*: it reads a finished plan and
-appends an ordered **TDD Slice Backlog** that drops straight into the `tdd`
-skill's Step 1. It is the **back half of `plan-breakdown`** — and also runs
+appends an ordered **TDD Slice Backlog** that drops straight into the `lundflow:tdd`
+skill's Step 1. It is the **back half of `lundflow:plan-breakdown`** — and also runs
 standalone against a single ticket or plan.
 
 You are a **planner and critic, not an executor**. You analyze, you push back on
 untestable design, and you write the backlog. You do **not** enter RED, write
-tests, write implementation, refactor, or spawn the `tdd` subagents.
+tests, write implementation, refactor, or spawn the `lundflow:tdd` subagents.
 
 ## Input & output target
 
 Resolve the target before analyzing — prompt if it's unclear, never invent one:
 
-- **A Linear ticket id** (the default when invoked by `plan-breakdown`) → read the
+- **A Linear ticket id** (the default when invoked by `lundflow:plan-breakdown`) → read the
   ticket's plan from its body; **append the backlog into that same body** via the
-  `linear-server` MCP (`save_issue` with `description`, per the repo rule: write to
-  the ticket body, never a comment), so one ticket = one self-contained body.
+  `linear-server` MCP (`save_issue` with `description`, per *Linear* in
+  `.ai/guidelines/lundflow-linear.md`: write to the ticket body, never a comment),
+  so one ticket = one self-contained body.
 - **A plan file path** → append the backlog to that file.
 
 ## Core rules
 
 - **Stop at the backlog.** Your final act is appending the backlog to the target
-  and telling the user to run the `tdd` skill. Never go further.
+  and telling the user to run the `lundflow:tdd` skill. Never go further.
 - **Testability beats design.** The input plan has no TDD concern; when a design
   choice can't be driven test-first, flag it and recommend the **smallest seam**.
   When design and testability conflict, testability wins.
 - **Output target = the ticket body or the plan file** (see above) — single source
   of truth, not a separate doc, not chat-only.
-- **Reference, don't restate.** Slice sizing, AAA, and exact commands live in the
-  `tdd`, `tdd-laravel-testing`, and `tdd-react-testing` skills. Point at them.
+- **Reference, don't restate.** Slice sizing, AAA, and exact commands live in
+  `lundflow:tdd` and in the skills the *Conventions skill: PHP* / *Conventions
+  skill: TSX/JSX* settings name. Point at them.
 
 ## Step 1 — Classify the surface
 
-Mirror Step 0 of the `tdd` skill (`.claude/skills/tdd/SKILL.md`):
+Mirror Step 0 of the `lundflow:tdd` skill (`${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md`):
 
 - **Backend-only** (model, action, API, policy, job) → Laravel cycles only.
 - **Frontend-only** (component/page behavior, no new server data) → React only.
@@ -69,8 +71,8 @@ side-effect. Internal method calls and private state are not behaviors.
 ## Step 3 — The seam contract (the opinionated part)
 
 A **seam** is the public boundary a test observes behavior at without reaching
-inside — the interface is the test surface. Vocabulary:
-`.claude/skills/codebase-design/SKILL.md`.
+inside — the interface is the test surface. Vocabulary: the skill the *Seam
+reference skill* setting names, loaded with the Skill tool.
 
 ### 3a — Name the seams, and get them confirmed
 
@@ -85,7 +87,7 @@ spreading evenly over every edge case.
   command or route level exercises the wiring too; testing at a private helper
   proves only that the helper works.
 - **Fewest seams wins — one is the ideal.** State the count outright ("one new
-  seam: `SyncShows::handle()`; everything else runs through existing `artisan()` +
+  seam: `ImportOrders::handle()`; everything else runs through existing `artisan()` +
   `Http::fake()`"). A ticket that needs four new seams is usually a design problem
   surfacing early, not a testing problem.
 - **New seam ⇒ justify it.** One adapter is a hypothetical seam; two (production +
@@ -94,7 +96,7 @@ spreading evenly over every edge case.
 Put the seam list at the **top of the backlog** and confirm it with the user
 alongside the testability findings. Ask that round — seams and findings together —
 as a **decision round**: *Asking the user a question* in
-`.ai/guidelines/project.md`.
+`.ai/guidelines/lundflow-workflow.md`.
 
 **Source:** the seam contract is adapted from `mattpocock-skills:tdd`'s *Seams:
 where tests go* (test only at pre-agreed seams, prefer the existing public
@@ -126,7 +128,7 @@ slice is worth executing.
 ## Step 4 — Group into slices
 
 A slice is **2–6 tests, one coherent behavior + its obvious variants** (see
-"Sizing a slice" in the `tdd` skill). **Split** on: backend vs frontend,
+"Sizing a slice" in the `lundflow:tdd` skill). **Split** on: backend vs frontend,
 unrelated behaviors, or a set past ~6 tests. **Tighten** (smaller slice) for
 risky or subtle logic. **Order** bottom-up / dependency-first — a slice never
 depends on code a later slice introduces.
@@ -134,7 +136,7 @@ depends on code a later slice introduces.
 ## Step 5 — Honest RED per slice
 
 Predict the slice's **first** test run, and make each test fail for its own
-reason — the right-reason-RED gate the `tdd` skill and `tdd-test-writer` enforce.
+reason — the right-reason-RED gate the `lundflow:tdd` skill and `lundflow:tdd-test-writer` enforce.
 
 - If every test would die on the **same** "class/method/route missing" crash,
   that's a **weak RED** — it proves only that nothing exists yet, not that each
@@ -165,50 +167,51 @@ the plan file — see **Input & output target**), in this order:
    - The **2–6 test list** (each AAA, exactly one Act).
    - **Files involved.**
    - **RED stub note** (from Step 5).
-   - **Verify command**, confirmed from `composer.json` / `package.json` — backend
-     `php artisan test --compact --filter='…'`, frontend
-     `npx vitest run <path>` (whole suite `npm test`).
+   - **Verify command** — backend: the *Backend test (filtered)* setting; frontend:
+     the *Frontend test (filtered)* setting (whole suite: the *Frontend test
+     (full)* setting). Fill in the slice's filter or path.
 
 Example slice block:
 
 ```markdown
-### Slice 1 — Store movie (backend)
-Posting a valid movie persists it and redirects; invalid input is rejected.
+### Slice 1 — Store order (backend)
+Posting a valid order persists it and redirects; invalid input is rejected.
 
-- **Seam:** existing — the `movies.store` route (HTTP)
-- **Stack/file:** Laravel · `tests/Feature/Catalog/StoreMovieTest.php`
+- **Seam:** existing — the `orders.store` route (HTTP)
+- **Stack/file:** Laravel · `tests/Feature/Billing/StoreOrderTest.php`
 - **Tests:**
-  1. stores a movie and redirects (valid payload)
-  2. requires a title (validation error, nothing persisted)
-  3. rejects a duplicate title
-- **Files:** `routes/web.php`, `app/Domains/Catalog/Actions/CreateMovie.php`
-- **RED stub:** add `movies.store` route → empty controller so each test fails on
+  1. stores an order and redirects (valid payload)
+  2. requires a reference (validation error, nothing persisted)
+  3. rejects a duplicate reference
+- **Files:** `routes/web.php`, `app/Domains/Billing/Actions/CreateOrder.php`
+- **RED stub:** add `orders.store` route → empty controller so each test fails on
   its own assertion, not a missing-route 404.
-- **Verify:** `php artisan test --compact --filter='store'`
+- **Verify:** the *Backend test (filtered)* setting, filtered to `store`
 ```
 
 ## Step 7 — Stop and hand off
 
 Confirm the backlog is appended to the target, then tell the user: **confirm the
-seam contract**, review the testability findings, then **invoke the `tdd` skill**
+seam contract**, review the testability findings, then **invoke the `lundflow:tdd` skill**
 to execute the first slice. Do nothing else.
 
 **Advance the ticket to Todo.** When the target is a **Linear ticket** and the
 backlog has been appended, the ticket is planned and ready — move it to **Todo**
-per the *Automatic ticket status transitions* contract in `project.md`
-(forward-only, active ticket only), and note the move in the hand-off line. When
-called per-ticket by `plan-breakdown`, do this for each ticket you slice. Skip
-when the target is a plain plan file (no ticket to move).
+per the *Automatic ticket status transitions* contract in
+`.ai/guidelines/lundflow-linear.md` (forward-only, active ticket only), and note
+the move in the hand-off line. When called per-ticket by `lundflow:plan-breakdown`,
+do this for each ticket you slice. Skip when the target is a plain plan file (no
+ticket to move).
 
 ## Reference
 
-- `.claude/skills/plan-breakdown/SKILL.md` — the front half; decomposes a PRD into
+- `${CLAUDE_PLUGIN_ROOT}/skills/plan-breakdown/SKILL.md` — the front half; decomposes a PRD into
   tickets and calls this skill per ticket.
-- `.claude/skills/tdd/SKILL.md` — the executor; slice definition, Step 0/Step 1,
+- `${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md` — the executor; slice definition, Step 0/Step 1,
   right-reason-RED gate. Your output slots into its Step 1.
-- `.claude/skills/tdd-laravel-testing/SKILL.md` — Pest/Feature/Unit conventions +
-  backend commands.
-- `.claude/skills/tdd-react-testing/SKILL.md` — Vitest/RTL conventions + frontend
-  commands.
-- `.claude/skills/codebase-design/SKILL.md` — seam / interface / depth vocabulary
-  the Step 3 contract is written in.
+- The skill the *Conventions skill: PHP* setting names, loaded with the Skill tool —
+  backend test conventions + commands.
+- The skill the *Conventions skill: TSX/JSX* setting names, loaded with the Skill
+  tool — frontend test conventions + commands.
+- The skill the *Seam reference skill* setting names, loaded with the Skill tool —
+  seam / interface / depth vocabulary the Step 3 contract is written in.

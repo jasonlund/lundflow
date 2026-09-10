@@ -3,7 +3,7 @@
 # with no undo. Reflog recovers a bad commit or a bad rebase; nothing recovers a
 # `reset --hard` over a dirty tree or a `clean -fd`.
 #
-# `git push` is deliberately ABSENT from this list. The lundflix flow pushes per
+# `git push` is deliberately ABSENT from this list. The lundflow review flow pushes per
 # workstream, and every push here goes to a feature branch that a PR gates.
 #
 # Adapted from mattpocock-skills:git-guardrails-claude-code, narrowed to the

@@ -1,11 +1,10 @@
 ---
-name: review:add
-description: Post non-dismissed /review:claude findings to a GitHub PR as a single review — inline comments where the file/line is in the diff, body comments otherwise.
+description: Post non-dismissed /lundflow:review:claude findings to a GitHub PR as a single review — inline comments where the file/line is in the diff, body comments otherwise.
 ---
 
 # Add Review to PR
 
-Post the findings from a `/review:claude` report to a GitHub PR as a review with
+Post the findings from a `/lundflow:review:claude` report to a GitHub PR as a review with
 inline comments.
 
 ## Input Source
@@ -15,7 +14,7 @@ The review report comes from one of two places:
 1. **File path in `$ARGUMENTS`** — if it contains a readable file path, Read that
    file as the report.
 2. **Previous message in the conversation** (default) — the most recent
-   `/review:claude` output.
+   `/lundflow:review:claude` output.
 
 Either way the report uses the standard format (Spec, Blocking Issues, Should Fix,
 Consider, Nits, Dismissed sections). A report from an engine that reviews
@@ -27,8 +26,8 @@ in either place, stop and tell the user.
 1. **PR number** — from the report header (`PR Review: PR #NNN …`). If absent,
    fall back to `gh pr view --json number --jq .number` for the current branch.
 2. **Source** — an optional `Source:` line just under the header names the review
-   engine (e.g. `Source: CodeRabbit`, `Source: /review:claude`).
-   Capture it as `{source}`; if absent, default to `` `/review:claude` ``. Use it in
+   engine (e.g. `Source: CodeRabbit`, `Source: /lundflow:review:claude`).
+   Capture it as `{source}`; if absent, default to `` `/lundflow:review:claude` ``. Use it in
    the body header and per-finding footers below so the posted review is
    attributed to the engine that produced it.
 3. **Repo** — `gh repo view --json owner,name --jq '{owner: .owner.login, repo: .name}'`.
@@ -47,7 +46,7 @@ in either place, stop and tell the user.
    - **Consider** → axis `standards`, severity `minor`
    - **Nits** (heading `## Nits (trivial, take them or leave them)`) → axis
      `standards`, severity `minor`, and the `nit` badge from Phase 3. It holds the
-     gate NITs — every Pint violation and every ESLint warning — so skipping the
+     gate NITs — every formatter violation and every lint warning — so skipping the
      section drops findings the pipeline paid a gate to produce.
    - Prose lines in place of entries ("Implements the ticket as specified.", "No
      blocking or should-fix defects found.", "No nits.") mean that section has zero
@@ -81,7 +80,7 @@ in either place, stop and tell the user.
 | minor | 🟡 **Consider** |
 | minor, from **Nits** | ⚪ **Nit** |
 
-Both axes use this one badge table, and the badge is what `/review:process` ranks
+Both axes use this one badge table, and the badge is what `/lundflow:review:process` ranks
 a posted comment by. A **Nits** finding keeps severity `minor` — that is the value
 the GitHub API payload carries — and takes its own badge so a trivial gate NIT
 reads as optional: `⚪ **Nit** · convention`.
@@ -124,7 +123,7 @@ a reader sees a spec defect even when the standards list is long:
 **Issue:** …
 **Violates:** "{quoted ticket line}"
 **Recommendation:** …
-_Found by: /review:debrief_
+_Found by: /lundflow:review:debrief_
 
 ---
 
@@ -147,11 +146,11 @@ naming the spec count separately, e.g. "All 6 findings are inline above (1 spec,
 ### Body-finding ref key
 
 Every body finding carries one **ref key** that identifies it across runs.
-`/review:process` records the key when it resolves the finding, and the
-`review-feedback-collector` it dispatches (its Phase 0 step 3) matches on the key to
+`/lundflow:review:process` records the key when it resolves the finding, and the
+`lundflow:review-feedback-collector` it dispatches (its Phase 0 step 3) matches on the key to
 skip that finding next run. So two distinct findings must produce two distinct keys,
 and the same finding must produce the same key every run.
-The format — stated identically in `.claude/commands/review/process.md`:
+The format — stated identically in `${CLAUDE_PLUGIN_ROOT}/commands/review/process.md`:
 
 - **Has a file** → `{file}:{line}`, and `{file}:0` when the finding names no line.
 - **No file** → `no-file:{hash}`, where `{hash}` is the first 8 hex characters of
@@ -164,7 +163,7 @@ The format — stated identically in `.claude/commands/review/process.md`:
 The ticket line is what makes a no-file finding unique and it is copied verbatim
 from the ticket, so the hash is both finding-specific and stable run to run. Print
 the key in that finding's **File** line, as the template above shows, so
-`/review:process` reads it rather than recomputing it.
+`/lundflow:review:process` reads it rather than recomputing it.
 
 ## Phase 4: Post the Review
 

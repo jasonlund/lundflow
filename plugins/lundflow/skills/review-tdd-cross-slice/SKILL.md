@@ -11,7 +11,7 @@ description: >-
 # TDD PR Review (multi-slice final refactor)
 
 This skill is a **trigger + scope shim**, nothing more. It exists to close one gap:
-the `tdd` loop's REFACTOR phase is **slice-scoped** — each cycle's refactorer sees
+the `lundflow:tdd` loop's REFACTOR phase is **slice-scoped** — each cycle's refactorer sees
 only the files it touched plus that slice (`tdd/SKILL.md`, "Step 3 — REFACTOR"). Across N slices in
 one PR, **nothing in the loop ever looks at the combined diff.** So per-slice refactors
 structurally cannot catch:
@@ -23,17 +23,17 @@ structurally cannot catch:
 - a domain-boundary smell (cross-domain import, `Common` bloat) introduced by the
   *union* of slices, not any one
 
-The capability to fix that already exists in `tdd-feedback`'s **REFACTOR HAT** branch
+The capability to fix that already exists in `lundflow:tdd-feedback`'s **REFACTOR HAT** branch
 — it is scope-agnostic. This skill just **points that branch at the whole PR** instead
 of one comment's scope. **It builds no new machinery.** Do not duplicate the loop or
-the gates; defer every spawn/gate mechanic to `tdd-feedback` → `tdd`.
+the gates; defer every spawn/gate mechanic to `lundflow:tdd-feedback` → `lundflow:tdd`.
 
 ## When this activates
 
 - Every slice in the PR is **done and green** and the PR spans **more than one
   slice**, and the user asks for a final cross-PR cleanup ("sweep the PR", "final
   refactor", "now that all tickets are in"). This is *not* feedback language, so
-  `tdd-feedback` won't self-trigger on it — that is the only reason this named hook
+  `lundflow:tdd-feedback` won't self-trigger on it — that is the only reason this named hook
   exists. One ticket of many slices qualifies: the gate is slice count, not ticket
   count.
 - **Single-slice PR → don't bother.** That slice's own REFACTOR saw every file in
@@ -41,7 +41,7 @@ the gates; defer every spawn/gate mechanic to `tdd-feedback` → `tdd`.
 
 ## What it does
 
-**Kick off a review using `tdd-feedback`, REFACTOR HAT, scoped to all of the PR's
+**Kick off a review using `lundflow:tdd-feedback`, REFACTOR HAT, scoped to all of the PR's
 content.** Concretely:
 
 1. **Define scope = the PR diff**, not untouched code:
@@ -53,13 +53,13 @@ content.** Concretely:
 
    Keeps the sweep bounded and reviewable. Untouched files are out of scope.
 
-2. **Invoke `tdd-feedback`** and classify this as **REFACTOR HAT** (pure structural
+2. **Invoke `lundflow:tdd-feedback`** and classify this as **REFACTOR HAT** (pure structural
    cleanup against a green suite). Hand it the PR-wide diff as the scope. From there
-   `tdd-feedback` runs its branch verbatim:
+   `lundflow:tdd-feedback` runs its branch verbatim:
    - **PRECONDITION GATE** — run the **full** suite PR-wide; show it GREEN *now*
      (whole PR, not one slice).
-   - on approval → **`tdd-refactorer` only**, behavior-preserving, two hats. In an
-     unattended session that approval is skipped by the same fork `tdd` Step 1
+   - on approval → **`lundflow:tdd-refactorer` only**, behavior-preserving, two hats. In an
+     unattended session that approval is skipped by the same fork `lundflow:tdd` Step 1
      defines (an `[unattended-mode]` notice in context); the two green gates around
      it are correctness gates and always fire.
    - **POST GATE** — full suite still green (subagent shows the run).
@@ -68,7 +68,7 @@ content.** Concretely:
 ## Hard rules (inherited, restated so they aren't lost)
 
 - **Behavior-preserving only.** If a "cleanup" changes behavior, it is a new SLICE
-  (RED first) via `tdd`, not this sweep. Split it out.
+  (RED first) via `lundflow:tdd`, not this sweep. Split it out.
 - **Two hats stay separated.** This pass cannot also fix a bug. Split it.
 - **Its own gates, not the last slice's.** A whole-PR refactor sits *outside* any
   slice's gate, so it needs its own precondition + post green run — never let it ride
@@ -78,21 +78,21 @@ content.** Concretely:
 ## What this is NOT
 
 - Not a new RED → GREEN → REFACTOR loop. It calls the existing one.
-- Not a bug-fix or behavior-change path — those go through `tdd-feedback`'s BUG / SLICE
+- Not a bug-fix or behavior-change path — those go through `lundflow:tdd-feedback`'s BUG / SLICE
   branches directly.
 - Not a code-review of prose/markdown — for non-tested artifacts there is no green gate
-  to anchor a refactor; use the `/review:claude` command instead.
+  to anchor a refactor; use the `/lundflow:review:claude` command instead.
 - **Not a reviewer of duplicated comment prose.** Being green-gated and
   behavior-preserving, this sweep can only move code; rewriting a duplicated
   rationale comment changes no test, so it falls outside the gate that makes this
   pass safe. The Smell Baseline's **Duplicated Code** entry covers it, and
-  `/review:claude`'s `review-compliance` reviewers grade against that.
+  `/lundflow:review:claude`'s `lundflow:review-compliance` reviewers grade against that.
 
 ## Reference
 
-- `.claude/skills/tdd-feedback/SKILL.md` — the REFACTOR HAT branch, gates, and
+- `${CLAUDE_PLUGIN_ROOT}/skills/tdd-feedback/SKILL.md` — the REFACTOR HAT branch, gates, and
   approval flow this skill delegates to.
-- `.claude/skills/tdd/SKILL.md` — underlying loop mechanics and exact gate wording.
+- `${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md` — underlying loop mechanics and exact gate wording.
 
 ## Convention note
 

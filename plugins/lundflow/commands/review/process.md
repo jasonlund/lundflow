@@ -1,17 +1,16 @@
 ---
-name: review:process
-description: Third stage after /review:claude → /review:add. Collects un-resolved PR feedback (GitHub inline threads, review-body findings, general comments, Conductor diff-comments), triages it against the Linear ticket and the PR head, presents one numbered list where every item carries your recommendation and its reasoning, takes a reply of overrides while silence accepts every recommendation, dispatches a foreground fixer per approval (parallel file-disjoint waves, test-first, no commit), then replies to and resolves everything it considered and prompts to commit/push.
+description: Third stage after /lundflow:review:claude → /lundflow:review:add. Collects un-resolved PR feedback (GitHub inline threads, review-body findings, general comments), triages it against the Linear ticket and the PR head, presents one numbered list where every item carries your recommendation and its reasoning, takes a reply of overrides while silence accepts every recommendation, dispatches a foreground fixer per approval (parallel file-disjoint waves, test-first, no commit), then replies to and resolves everything it considered and prompts to commit/push.
 ---
 
 # Process Review Feedback
 
-The final stage of the review loop: `/review:create-pr` → `/review:debrief` →
-`/review:human` → `/review:claude` → `/review:add` → **`/review:process`**. You read
+The final stage of the review loop: `/lundflow:review:create-pr` → `/lundflow:review:debrief` →
+`/lundflow:review:human` → `/lundflow:review:claude` → `/lundflow:review:add` → **`/lundflow:review:process`**. You read
 back the feedback still open on the PR, settle it with the user in **one gate**,
 dispatch isolated fixer subagents, then reply to and resolve everything you considered
 so a future run never re-triages it.
 
-Fixing happens in `review-fixer` subagents. You triage, present, dispatch, verify, and
+Fixing happens in `lundflow:review-fixer` subagents. You triage, present, dispatch, verify, and
 resolve.
 
 ## Input
@@ -20,22 +19,22 @@ resolve.
 - **`--leave-human-open`** — reply to human-authored threads but leave them open for
   the reviewer to close. Threads our own pipeline and known bots authored still resolve.
 - **`--human-round`** — triage the human reviewer's comments instead of the bot round.
-  `/review:human` Phase 2 passes it. **The Human Round** below states what changes.
+  `/lundflow:review:human` Phase 2 passes it. **The Human Round** below states what changes.
 
 ## Example Invocation
 
 ```
-/review:process                          # auto-detect PR from the current branch
-/review:process 142                      # explicit PR
-/review:process 142 --leave-human-open   # let humans close their own threads
-/review:process 142 --human-round        # triage the submitted human review
+/lundflow:review:process                          # auto-detect PR from the current branch
+/lundflow:review:process 142                      # explicit PR
+/lundflow:review:process 142 --leave-human-open   # let humans close their own threads
+/lundflow:review:process 142 --human-round        # triage the submitted human review
 ```
 
 ---
 
 ## The Human Round
 
-`--human-round` triages the review a person submitted in Linear. `/review:human`
+`--human-round` triages the review a person submitted in Linear. `/lundflow:review:human`
 Phase 2 hands it here once the review reaches the PR.
 
 Triage is otherwise **identical to the bot round**: the same collector, the same
@@ -46,8 +45,8 @@ these four.
 1. **Scope.** Collect the un-resolved items where `isBot` is false. Any human
    reviewer counts — the author most often, a teammate just as validly. Leave the
    bot items to the ordinary round.
-2. **Validator exemption.** Human items are exempt from `review-bug-validator` and
-   from `review-compliance-validator`. Both validators are fail-closed: each one
+2. **Validator exemption.** Human items are exempt from `lundflow:review-bug-validator` and
+   from `lundflow:review-compliance-validator`. Both validators are fail-closed: each one
    drops the item it cannot confirm. A machine that silently drops a deliberate
    human read is the one failure this stage must not have. Phase 1 step 1 carries
    the same exemption, because its default sends external feedback to a validator.
@@ -109,22 +108,18 @@ comply or refuse.
 ## Phase 0: Collect
 
 1. **PR number** — if not passed, follow **PR Number Auto-Extraction** in
-   `.claude/skills/review-pipeline/SKILL.md`. With no PR found, HALT and tell the user
+   `${CLAUDE_PLUGIN_ROOT}/skills/review-pipeline/SKILL.md`. With no PR found, HALT and tell the user
    to push the branch and open a PR, or to pass the number.
 2. **Repo and PR head** — `{owner}`/`{repo}` from
    `gh repo view --json owner,name --jq '{owner: .owner.login, repo: .name}'`, and
    `{headRefOid}` — the PR's head commit — from
    `gh pr view {number} --json headRefOid -q .headRefOid`.
-3. **Dispatch `review-feedback-collector`** with the PR number, owner, and repo. It
+3. **Dispatch `lundflow:review-feedback-collector`** with the PR number, owner, and repo. It
    returns one normalized JSON array: every un-resolved GitHub item, keyed, with each
    item's `scope` already checked against the PR diff and `isBot` set. The fetch, parse,
    ref-keying, and diff arithmetic all live there — its contract is
-   `.claude/agents/review-feedback-collector.md`.
-4. **Conductor diff-comments** — read these from the **current conversation's
-   attachments**; the Conductor MCP cannot fetch them, so the collector cannot see them.
-   Normalize each to the collector's item shape with `source: conductor`. Under
-   LaborForest + Solo this source is empty and GitHub carries all the feedback.
-5. **Linear ticket context (body + comments).** Resolve every ticket id in the branch
+   `${CLAUDE_PLUGIN_ROOT}/agents/review-feedback-collector.md`.
+4. **Linear ticket context (body + comments).** Resolve every ticket id in the branch
    name and fetch each with `mcp__linear-server__get_issue` **and**
    `mcp__linear-server__list_comments`. Read the body *and* the full comment thread:
    comments record **deviations from the original plan** — a decision reversed, a scope
@@ -142,24 +137,23 @@ Zero items across every source → say so and stop.
 Work the collector's list into the Phase 2 gate list, plus the skips and dismissals that
 go straight to Phase 5.
 
-1. **Weigh origin.** Items carrying the `/review:add` footer (`via /review:claude`,
-   `Found by:`) already passed a per-finding validator inside `/review:claude`, which
+1. **Weigh origin.** Items carrying the `/lundflow:review:add` footer (`via /lundflow:review:claude`,
+   `Found by:`) already passed a per-finding validator inside `/lundflow:review:claude`, which
    drops every finding it cannot confirm — **trust them as they stand**. Scrutinize only
-   *external* feedback (human reviewers, general comments, Conductor diff-comments)
-   against the **Convention Override Rule** and "Commonly false-positived conventions"
-   in `.claude/skills/review-pipeline/SKILL.md`. High-volume or low-confidence external
-   feedback may go to the matching validator — `review-bug-validator` or
-   `review-compliance-validator` — one item per dispatch, answered CONFIRMED or DROPPED.
+   *external* feedback (human reviewers, general comments) against the **Convention Override Rule** and "Commonly false-positived conventions"
+   in `${CLAUDE_PLUGIN_ROOT}/skills/review-pipeline/SKILL.md`. High-volume or low-confidence external
+   feedback may go to the matching validator — `lundflow:review-bug-validator` or
+   `lundflow:review-compliance-validator` — one item per dispatch, answered CONFIRMED or DROPPED.
    **In `--human-round`, every item is exempt from both validators.** Each validator
    is fail-closed and drops what it cannot confirm, and a deliberate human read that
    a machine deleted is the one loss this stage must not take.
-2. **Check each item against the Linear ticket** (Phase 0 step 5). Where the ticket
+2. **Check each item against the Linear ticket** (Phase 0 step 4). Where the ticket
    **endorses** what a reviewer flagged — the change was a deliberate, documented
    deviation — recommend **Skip** and cite the ticket comment; a settled call stays
    settled. Where the ticket **contradicts** the code — the code drifted from a
    documented decision — recommend **Approve** even at low severity. Name the ticket
    whenever it drove the call.
-3. **Check each item against the PR head.** `/review:add` posts a finding against the
+3. **Check each item against the PR head.** `/lundflow:review:add` posts a finding against the
    commit that was head at the time, and the work often lands before this command runs,
    so treat every finding as a claim about the past until you confirm it against the
    present. Read the flagged code at the head commit `{headRefOid}` Phase 0 step 2
@@ -175,22 +169,23 @@ go straight to Phase 5.
    scope mark: a question about code this PR left alone is still a question the
    reviewer asked.
 5. **Group** duplicates and relatives by `(file, line ±10, category)` — the key
-   `/review:claude` Phase 3 merges on. A group is presented and fixed as one unit.
-6. **Sort** BLOCKING → SHOULD_FIX → CONSIDER → NIT, by the `/review:add` badge
+   `/lundflow:review:claude` Phase 3 merges on. A group is presented and fixed as one unit.
+6. **Sort** BLOCKING → SHOULD_FIX → CONSIDER → NIT, by the `/lundflow:review:add` badge
    (🔴/🟠/🟡/⚪) where present, otherwise by the contract taxonomy.
 7. **Settle the dismissals silently.** An item you judge a false positive — or one that
    arrives already labeled dismissed (a ⚫ *Dismissed as false positive* badge from
-   `/review:add` or CodeRabbit) — is **recorded as a dismissal** with its rationale and
+   `/lundflow:review:add` or CodeRabbit) — is **recorded as a dismissal** with its rationale and
    resolved in Phase 5. A settled dismissal needs no confirmation.
 
    Where the dismissal is wrong about a pattern the project deliberately uses and will
-   keep using (`RefreshDatabase` / `Http::preventStrayRequests()` global in
-   `tests/Pest.php`; DDD model placement; service-constant base URLs), **capture a
-   reinforcement** so the same false positive stops returning every run. Capture one or
-   both, then carry on — Phase 6 offers them in one batch:
-   - **Convention registry** — the exact one-line bullet you would add to "Commonly
-     false-positived conventions" in `.claude/skills/review-pipeline/SKILL.md`, so our
-     own reviewers stop raising it.
+   keep using (a setup the test bootstrap applies globally; a directory layout
+   `CLAUDE.md` documents), **capture a reinforcement** so the same false positive stops
+   returning every run. Capture one or both, then carry on — Phase 6 offers them in one
+   batch:
+   - **Convention registry** — the exact one-line bullet you would add to the project's
+     guideline file (the *Guideline source* setting) as an endorsed convention, so our
+     own reviewers stop raising it: the Convention Override Rule reads endorsements from
+     `CLAUDE.md`. After the edit, run the *Regenerate guidelines* setting.
    - **External reviewer config** — for a CodeRabbit or other CLI-engine flag, the
      path-scoped rule for its config (e.g. `.coderabbit.yaml`).
 
@@ -207,12 +202,12 @@ One reply settles the whole list: every recommendation stands unless an override
 its number.
 
 This list is a **disposition list** — the rendering *Asking the user a question* in
-`.ai/guidelines/project.md` defines for a batch of already-triaged items. The contract
+`.ai/guidelines/lundflow-workflow.md` defines for a batch of already-triaged items. The contract
 there binds it, numbering included.
 
 **Number the items globally `1..N`. A number is assigned once and keeps naming that item
 for the rest of the session** — the Phase 6 summary, and any later round. A delta round
-(`/review:run` Stage 5) **continues** the sequence rather than restarting at `1`, so the
+(`/lundflow:review:run` Stage 5) **continues** the sequence rather than restarting at `1`, so the
 user can still amend item 6 by number two rounds on.
 
 Group by your recommendation — `APPROVE` (worth fixing, so do it) and `SKIP` (you would
@@ -235,24 +230,24 @@ Fill this shape verbatim, one entry per item:
 ```
 APPROVE
 
-1. [BLOCKING] Add `_tmdb_id` to the upsert conflict key. (claude, coderabbit)
-   app/Domains/Catalog/Actions/UpsertTmdbMovies.php:88-94
-   Issue: `UpsertTmdbMovies` matches an existing row on `_imdb_id` alone. TMDB carries
-          movies that hold no IMDb id, so every sync run inserts those rows again.
-   Fix:   Add `_tmdb_id` to the conflict key in the `upsert()` call.
+1. [BLOCKING] Add `external_id` to the upsert conflict key. (claude, coderabbit)
+   app/Domains/Billing/Actions/UpsertInvoices.php:88-94
+   Issue: `UpsertInvoices` matches an existing row on `number` alone. The provider sends
+          credit notes that hold no number, so every sync run inserts those rows again.
+   Fix:   Add `external_id` to the conflict key in the `upsert()` call.
    Why:   The table has no unique index, so nothing else stops the duplicates.
 
 SKIP
 
-6. [CONSIDER] Route the crosswalk parse through `SourceId`. (coderabbit)
-   app/Domains/Catalog/Actions/ImportImdbTitles.php:141
-   Issue: The action validates an IMDb id with an inline regex. `SourceId` is the shared
-          normalizer that every other crosswalk parse site calls.
-   Fix:   Replace the inline guard with `SourceId::imdb($raw)`.
-   Why:   The guard predates `SourceId` and this PR leaves the file alone. I lean skip.
+6. [CONSIDER] Route the amount parse through `Money::parse()`. (coderabbit)
+   app/Domains/Billing/Actions/ImportInvoices.php:141
+   Issue: The action validates an amount with an inline regex. `Money::parse()` is the
+          shared parser that every other amount parse site calls.
+   Fix:   Replace the inline guard with `Money::parse($raw)`.
+   Why:   The guard predates `Money::parse()` and this PR leaves the file alone. I lean skip.
 
 7. [NIT] Rename `$res` to `$response`. (coderabbit)
-   app/Domains/Catalog/Services/TmdbApiService.php:52
+   app/Domains/Billing/Services/PaymentGatewayService.php:52
    Issue: The variable holds a `Response`. Its siblings in the same class spell the
           name out in full.
    Why:   This PR leaves the line alone, so the rename is churn a reviewer must read.
@@ -262,9 +257,10 @@ ALREADY FIXED
 8. [BLOCKING] Guard every step in `refresh.yaml` against the primary checkout. (claude, coderabbit)
    .laborforest/workflows/refresh.yaml:1
    Issue: `refresh` drops and reseeds the database it runs against. Run from the primary
-          checkout it takes `lundflix`, whose catalog the committed dumps do not carry.
-   Fixed: 39706da puts the primary-checkout `if:` on all three steps, and sweeps them
-          in `LaborForestWorkflowTest`.
+          checkout it takes the primary checkout's database, which the committed dumps
+          cannot restore.
+   Fixed: 39706da puts the primary-checkout `if:` on all three steps, and pins them in
+          a workflow test.
 
 OUT OF SCOPE — BLOCKING (this PR did not touch this code)
 
@@ -277,12 +273,11 @@ OUT OF SCOPE — BLOCKING (this PR did not touch this code)
 
 CONVERSATION
 
-10. ANSWER — Why does the collector key a body finding on `{ref}`? (jasonlund)
-    .claude/agents/review-feedback-collector.md:64
-    Issue:  The reviewer asks how a re-run knows it handled a review-body finding.
-    Answer: A body finding carries no comment id and no resolve mutation. Phase 5
-            writes the `{ref}` token into the reply footer, and the collector
-            matches that token next run.
+10. ANSWER — Why does `SyncInvoices` retry a failed page only once? (octocat)
+    app/Domains/Billing/Actions/SyncInvoices.php:64
+    Issue:  The reviewer asks why a failed page gets one retry and no backoff.
+    Answer: The next scheduled run starts from the last saved cursor, so it covers
+            the page again. A longer retry loop only delays the run's close.
 ```
 
 **Line 1** carries the number, the `[SEVERITY]` tag, the fix as a command, and who flagged
@@ -326,7 +321,7 @@ a trip to the file.
 - **One word, one meaning.** Repeat the term exactly; elegant variation costs a re-read.
 - **Quoted code and quoted ticket lines stay verbatim** — they are evidence.
 
-The full spec is *How Findings Are Written* in `.claude/skills/review-pipeline/SKILL.md`.
+The full spec is *How Findings Are Written* in `${CLAUDE_PLUGIN_ROOT}/skills/review-pipeline/SKILL.md`.
 
 Then prompt once, as plain text. The list above is the disposition list's entries; this
 prompt is the closing line the contract asks for. Every recommendation **stands by
@@ -373,7 +368,7 @@ closes the same way: the item stands as filed unless the next reply overrides it
 ## Phase 3: Dispatch — parallel, foreground
 
 Every fixer is a foreground `Agent` call. A `PreToolUse` hook
-(`.claude/hooks/no-background-gated-subagents.js`) denies a backgrounded `review-fixer`, so each
+(`${CLAUDE_PLUGIN_ROOT}/hooks/no-background-gated-subagents.js`) denies a backgrounded `lundflow:review-fixer`, so each
 result returns inside the dispatching turn and the harness never wakes you mid-flow.
 
 Group the dispatched items into **waves where no two items share a target file** — the
@@ -382,7 +377,7 @@ one file at once corrupt each other's work. Dispatch a wave as a single message 
 parallel `Agent` calls; they run concurrently and all return before the turn continues.
 Usually one wave covers everything.
 
-Each `review-fixer` gets the item or group, its target files, the resolution to reach, and
+Each `lundflow:review-fixer` gets the item or group, its target files, the resolution to reach, and
 the standing constraints: touch only its files, run only filtered tests, leave global
 formatters alone, and leave committing to the orchestrator.
 
@@ -395,13 +390,13 @@ has returned and every blocker is settled.
 ## Phase 4: Verify centrally
 
 1. Read the aggregate diff and confirm each dispatched item landed as specified, against
-   what each fixer reported: `git diff` (or Conductor's `GetWorkspaceDiff`).
+   what each fixer reported: `git diff`.
 2. Run the affected suites **once, here** — the one place safe from parallel clobber:
-   ```bash
-   php artisan test --compact --filter={affected}   # backend, if PHP changed
-   npx vitest run {affected}                        # frontend, if JS/TS changed
-   vendor/bin/pint --dirty --format agent           # style fix
-   ```
+   - the *Backend test (filtered)* setting, filtered to the affected tests, if backend
+     code changed;
+   - the *Frontend test (filtered)* setting, filtered to the affected tests, if
+     frontend code changed;
+   - the formatter step of the *Finalize gates (backend)* setting, for the style fix.
 3. Re-dispatch a fixer for anything red or unaddressed, or surface it to the user. A red
    suite stops the run here.
 
@@ -443,7 +438,7 @@ Mechanics by source:
   ```bash
   gh api repos/{owner}/{repo}/issues/{number}/comments -f body='<result>
 
-  _via /review:process · ref: review-body {ref}_'
+  _via /lundflow:review:process · ref: review-body {ref}_'
   ```
   One `ref:` line per finding; batch several into one comment only when each keeps its own.
 - **gh-comment** — reply only; a general comment has no resolve, so the reply's footer
@@ -452,21 +447,19 @@ Mechanics by source:
   ```bash
   gh api repos/{owner}/{repo}/issues/{number}/comments -f body='<result>
 
-  _via /review:process · ref: comment {commentId}_'
+  _via /lundflow:review:process · ref: comment {commentId}_'
   ```
-- **conductor** — reply on the same file and line with the `DiffComment` tool. Conductor
-  comments have no programmatic resolve.
 
 Close every reply with the footer marker on its own line:
 
 ```
-_via /review:process_
+_via /lundflow:review:process_
 ```
 
 **gh-review-body** and **gh-comment** extend that marker with the `ref:` token shown above
 — `review-body {ref}` and `comment {commentId}`. Neither source carries resolved state, so
-that token is the only handled-signal a re-run has. **gh-thread** resolves by mutation and
-**conductor** resolves by hand, so both close with the bare marker.
+that token is the only handled-signal a re-run has. **gh-thread** resolves by mutation, so
+it closes with the bare marker.
 
 ---
 
@@ -475,7 +468,7 @@ that token is the only handled-signal a re-run has. **gh-thread** resolves by mu
 **Offer the captured reinforcements once, as one batch.** List each registry or config
 edit from Phase 1 with the exact line you would add and the re-flag it stops, and ask
 which to apply (all / some / none). Apply the approved ones **in your own context** —
-they are docs and config edits, so a `review-fixer` is the wrong tool. Skip this step
+they are docs and config edits, so a `lundflow:review-fixer` is the wrong tool. Skip this step
 when Phase 1 captured none.
 
 In `--human-round`, list every `TICKET` item in the same batch, each with the ticket
@@ -494,7 +487,7 @@ Summarize the run:
 - Out of scope — skipped at triage (PR didn't touch this code): {count}
 - Human threads left open for the reviewer: {count}   # only with --leave-human-open
 - Files changed: {list}
-- Tests: {pass/fail summary} · Pint: {clean/fixed}
+- Tests: {pass/fail summary} · Formatter: {clean/fixed}
 ```
 
 **Committing is the user's call.** Prompt them to commit and push. On approval, commit

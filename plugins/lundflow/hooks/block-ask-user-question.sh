@@ -34,7 +34,7 @@ if ! TOOL_NAME=$(printf '%s' "$INPUT" | jq -re '.tool_name // empty' 2>/dev/null
 fi
 
 if [[ $TOOL_NAME == 'AskUserQuestion' ]]; then
-  echo "BLOCKED: questions go to the user as plain markdown in the chat — a continuously numbered round, each question carrying its recommendation and the reasoning behind it. Never a picker, menu, or dialog tool. See \"Asking the user a question\" in .ai/guidelines/project.md for the verbatim round format." >&2
+  echo "BLOCKED: questions go to the user as plain markdown in the chat — a continuously numbered round, each question carrying its recommendation and the reasoning behind it. Never a picker, menu, or dialog tool. See \"Asking the user a question\" in .ai/guidelines/lundflow-workflow.md for the verbatim round format." >&2
   exit 2
 fi
 

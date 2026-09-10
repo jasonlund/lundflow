@@ -1,6 +1,6 @@
 ---
 name: review-pipeline
-description: Shared contract for all review agents — finding format, severity taxonomy, the Comment Bar, model tiers, and lundflix conventions. Referenced by /review:claude and every reviewer and validator it dispatches.
+description: Shared contract for all review agents — finding format, severity taxonomy, the Comment Bar, model tiers, and how reviewers apply the project's conventions. Referenced by /lundflow:review:claude and every reviewer and validator it dispatches.
 ---
 
 # Review Pipeline — Shared Agent Contract
@@ -51,8 +51,8 @@ The rules that bind here:
   exactly. Elegant variation costs the reader a re-read to confirm two words mean
   one thing.
 - **Use the glossary.** Name domain concepts as `CONTEXT.md` names them, and
-  interfaces as `codebase-design` names them.
-- **Noun clusters up to three words.** "download source markup drift" is the limit.
+  interfaces as `laravel:codebase-design` names them.
+- **Noun clusters up to three words.** "tenant scope check" is the limit.
 - **Paragraphs up to six sentences.**
 - **Write recommendations as commands.** "Add a tenant scope to the query on L40."
 - **Literal words, glossary terms, statements.** Every word carries its plain
@@ -85,15 +85,15 @@ before speaking.
 2. **Scope bar — this diff.** The finding is about code the PR **added or
    modified**. Stay silent on a pre-existing issue in untouched code, even a real
    one — diff-locality is what bounds this review. Breadth across the repo belongs
-   to CodeRabbit in `/review:suite`, and `/review:process` keeps an out-of-scope
+   to CodeRabbit in `/lundflow:review:suite`, and `/lundflow:review:process` keeps an out-of-scope
    bucket for the ones another engine or a human raises.
 3. **Category bar — objective defect.** It's a bug, security, correctness, data,
    or cross-system/integration issue. Style, formatting, naming taste, and
    "alternative approach" preferences are **not** defects — cap them at NIT, or say
    nothing.
-4. **Ownership bar — not already owned.** A deterministic gate
-   (Pint/Rector/ESLint/Vitest/Pest) or an endorsed convention does not already own
-   it. Repeating a gate or flagging an endorsed pattern is itself a review defect
+4. **Ownership bar — not already owned.** A deterministic gate (the finalize
+   gates and test suites `/lundflow:review:claude` Phase 1 runs) or an endorsed
+   convention does not already own it. Repeating a gate or flagging an endorsed pattern is itself a review defect
    (see Convention Override Rule).
 
 ## Severity Definitions
@@ -107,14 +107,14 @@ before speaking.
 
 **Style is silence, not a NIT.** Style, formatting, import order, and type hints a
 deterministic gate already owns are **silence** (bar 4). A NIT is the home for the
-taste call no gate owns, and `/review:claude`'s per-reviewer word cap bounds how
+taste call no gate owns, and `/lundflow:review:claude`'s per-reviewer word cap bounds how
 many of those reach the report.
 
 ## Review Authority Rules
 
 1. **Every finding must cite an authority.** One of: ticket requirement, a
    `CLAUDE.md` / project-guideline rule, a codebase convention, a deterministic
-   tool result (Pint/Rector/Pest), or a security best practice.
+   gate result (`/lundflow:review:claude` Phase 1), or a security best practice.
 2. **If you can't cite the authority, the finding doesn't belong in the report.**
 3. **A pre-existing issue is silence** — see the scope bar above.
 4. **Don't be pedantic.** Minor style preferences aren't findings. The goal is
@@ -122,60 +122,20 @@ many of those reach the report.
 5. **Quote specific code** for every finding. Vague references like "the
    validation logic" are not evidence.
 
-## Project Conventions (lundflix)
+## Project Conventions
 
-This is a Laravel + Inertia (React) app organized by **Domain-Driven Design**.
-When reviewing, check changes against these standards (full detail in `CLAUDE.md`):
+This contract does not restate the project's conventions. They reach every agent
+through the project's `CLAUDE.md` — the kit's layer files plus the project's own
+guidelines (the *Guideline source* setting). Check changes against those
+standards, narrowed to the `GUIDELINE_PATHS` that `lundflow:review-summarizer`
+returns for the changed files.
 
-**Architecture**
-- Domain code lives under `app/Domains/{Domain}/` with namespace
-  `App\Domains\{Domain}\...`. Non-domain infra/UI (`app/Http`, `app/Filament`,
-  `app/Providers`) stays at `app/` root and calls *into* domains.
-- A domain never imports another domain's `Models` or internals — the only
-  cross-domain entry point is that domain's `Contracts/` (interfaces) or a
-  published `Service`.
-- `Common` is the shared kernel: only incredibly stable shared concepts (value
-  objects, enums, contracts, DTOs). It depends on nothing domain-specific. Keep
-  it small.
-- Create a subfolder only when there is something to put in it — no empty
-  scaffolding.
+A convention is an authority only when you can cite it (Review Authority Rules,
+rule 1). Where `CLAUDE.md` endorses a pattern, the Convention Override Rule below
+keeps it out of the report.
 
-**Action classes**
-- Single-purpose actions in `App\Domains\{Domain}\Actions`, named `VerbNoun` in
-  PascalCase with **no `Action` suffix** (`CreateUser`, not `Create` or
-  `CreateUserAction`). Standalone actions expose one `handle()` method; actions
-  bound to a framework contract keep the interface's method name.
-
-**Exceptions**
-- Explicitly named exception classes, **one class per distinct failure**, named
-  for the failure, in `App\Domains\{Domain}\Exceptions`. Never funnel multiple
-  unrelated failures through a single catch-all exception. A static named
-  constructor (`::at($path)`) is fine — one-failure-per-class is the rule, not
-  the factory style.
-
-**Configuration**
-- Fixed, public third-party base URLs are **service constants** (`private const`
-  on the calling service), not `env`/`config`. Reserve `config`/`env` for
-  secrets, credentials, and values that genuinely differ per environment.
-
-**File creation**
-- Files are created via `php artisan make:*` and land in the DDD structure
-  (domain path passed in the name). Hand-written boilerplate where a generator
-  exists is a smell.
-
-**Comments & docblocks**
-- Comments capture a non-obvious *why*; flag ones that restate the *what* the
-  code or a passing test already says. Docblocks keep only type info PHP can't
-  express (generics, `@throws`) and genuine "why" prose — flag summary lines
-  restating the method name, redundant `@param`/`@var`, and framework type stubs.
-
-**Frontend (Inertia + React)**
-- `resources/js/` mirrors the backend domains: `common/` (generic, no domain
-  knowledge), `modules/{domain}/` (reusable domain UI/logic), `pages/` (Inertia
-  entry points by URL; page-local components only). PascalCase components,
-  `Page`/`Layout` suffixes, kebab-case dirs.
-
-**Testing** — see the dedicated `tdd-laravel-testing` and `tdd-react-testing` skills.
+**Testing** — see the skills the *Conventions skill: PHP* and *Conventions skill:
+TSX/JSX* settings name.
 
 ## Smell Baseline (judgement calls only)
 
@@ -184,7 +144,7 @@ way instead of inventing one-off phrasings. Fowler, *Refactoring* ch.3. **Three
 rules bind every entry, without exception:**
 
 - **The repo overrides.** A documented convention always wins. Where `CLAUDE.md`,
-  `.ai/guidelines/project.md`, or this contract endorses something the baseline
+  the project's guideline files, or this contract endorses something the baseline
   would flag, **stay silent** — see the Convention Override Rule below.
 - **Always a judgement call, never a hard violation.** Report as "possible Feature
   Envy". A smell name is a label, not evidence; cite the `file:line` showing the
@@ -209,7 +169,7 @@ Each reads *what it is* → *the fix*:
 - **Feature Envy** — a method reaching into another object's data more than its
   own. → move it onto the data it envies.
 - **Data Clumps** — the same few fields always travelling together. → bundle into
-  one type (a DTO under `Data/`, a value object under `Common/ValueObjects/`).
+  one type (a DTO or a value object, placed where `CLAUDE.md` puts them).
 - **Primitive Obsession** — a string or int standing in for a domain concept. →
   give the concept its own small type (an enum, a value object).
 - **Repeated Switches** — the same `match`/`if`-cascade on the same type recurring
@@ -223,13 +183,14 @@ Each reads *what it is* → *the fix*:
 - **Message Chains** — long `a->b()->c()->d()` navigation the caller shouldn't
   depend on. → hide the walk behind one method.
 - **Middle Man** — a class or method that mostly just delegates onward. → cut it,
-  call the real target. (**Not** a `Contracts/` interface: that indirection is the
-  endorsed cross-domain boundary.)
+  call the real target. (**Not** an interface `CLAUDE.md` names as the endorsed
+  cross-domain boundary, such as a domain's `Contracts/`: that indirection is the
+  point.)
 - **Refused Bequest** — a subclass ignoring or overriding most of what it inherits.
   → drop the inheritance, use composition.
 
-Design vocabulary for the recommendation — seam, interface, depth, adapter:
-`.claude/skills/codebase-design/SKILL.md`.
+Design vocabulary for the recommendation — seam, interface, depth, adapter: the
+skill the *Seam reference skill* setting names (load it with the Skill tool).
 
 **Source:** adapted near-verbatim from the smell baseline in
 `mattpocock-skills:code-review`, including the repo-overrides rule. It lives inline
@@ -254,65 +215,54 @@ verify the author's *intent* and hunt real *failure modes*; do not second-guess
 architecture or taste. Adversarial energy is aimed at bugs and at your own false
 positives, never at the author's judgment.
 
-**Commonly false-positived conventions** (endorsed — do not flag):
+**Commonly false-positived conventions** (endorsed — do not flag). Each entry holds
+where the project's `CLAUDE.md` adopts the convention behind it. A project records
+its own endorsements in its guideline file (the *Guideline source* setting), and
+they reach you through `CLAUDE.md` like any other rule.
 - Models under `app/Domains/{Domain}/Models/` — intentional DDD layout, not a
   misplacement.
 - A test verifying an ingest/sync write with `assertDatabaseHas` / `assertDatabaseCount`
-  / `assertDatabaseMissing` — this **is** behavior verification for these modules, so
-  treat it as the endorsed pattern and stay silent. Reasoning:
-  `docs/adr/0002-database-assertions-verify-ingest-behavior.md`; test conventions:
-  `tdd-laravel-testing`.
-- Fixed third-party base URLs as `private const` on a service — intentional, not
-  "should be config".
-- The catalog schedule's non-overlap by **offset timing**, not a shared mutex
-  (`routes/console.php`). `catalog:sync-imdb` at 06:00 sits between `catalog:sync`'s
-  00:00/12:00 starts, and each carries its own per-event `withoutOverlapping()`.
-  FLIX-273 evaluated a cross-command shared mutex, rejected it, and wrote down the
-  residual it accepted. That `withoutOverlapping()` is per-event is the known
-  premise, not an oversight — do not propose a shared lock. (The lock *expiry*
-  is a separate matter and is set explicitly on both entries.)
+  / `assertDatabaseMissing` — for a module whose behavior is the write, this **is**
+  behavior verification, so treat it as the endorsed pattern and stay silent.
+  Reasoning: the skill the *Seam reference skill* setting names; test conventions:
+  the skill the *Conventions skill: PHP* setting names.
 - Many small named exception classes for one domain — intentional
   (one-failure-per-class), not over-engineering.
 - Action classes named `VerbNoun` with no `Action` suffix — intentional naming.
 - Multiple near-identical tests that each assert one action — intentional (AAA,
   one Act per test), not duplication to be merged.
-- Verbatim pattern pinning in the toolkit drift guards (`ReviewContractTest`,
-  `ReviewCommandStructureTest`) — deliberate, not brittleness. A guard on *who owns*
-  something pins the assigning verb, because a loose co-occurrence pattern passes
-  green on a sentence that **revokes** the ownership. Do not call it inconsistent with
-  `$nearInParagraph` / `$withinPhase` / `$withinStage`: those scope a pattern to a
-  block or pair a rule with its reason, and neither relaxes wording.
+- Verbatim pattern pinning in the kit's own drift guards (`ReviewContractTest`,
+  `ReviewCommandStructureTest`), when the kit's repo is under review — deliberate,
+  not brittleness. A guard on *who owns* something pins the assigning verb, because
+  a loose co-occurrence pattern passes green on a sentence that **revokes** the
+  ownership. Do not call it inconsistent with `$nearInParagraph` / `$withinPhase` /
+  `$withinStage`: those scope a pattern to a block or pair a rule with its reason,
+  and neither relaxes wording.
 - Domain calling another domain only through a `Contracts/` interface — intended
   boundary, not indirection to remove.
-- An ingest/mirror domain's Models declaring `belongsTo` **directly** onto
-  `Catalog\Models\*` via a crosswalk id (`_imdb_id`/`_tmdb_id`/`_tvdb_id`) — the
-  Download→Catalog precedent, endorsed per-ticket. `PlexLibrary`'s `PlexMovie`,
-  `PlexShow`, `PlexSeason`, and `PlexEpisode` are the current instances. This is a
-  deliberate exception to the "only through `Contracts/`" rule above, not a
-  boundary violation to route through a contract.
-- Feature tests with no per-file `uses(RefreshDatabase::class)` or
-  `Http::preventStrayRequests()` — **both** are applied **globally** to the Feature
-  suite in `tests/Pest.php` via `pest()->extend(TestCase::class)
-  ->use(RefreshDatabase::class)->beforeEach(fn () => Http::preventStrayRequests())
-  ->in('Feature')`. Declaring either per-file is redundant, not a missing safeguard.
+- A test file with no per-file `uses(RefreshDatabase::class)` or
+  `Http::preventStrayRequests()` where the test bootstrap applies it **globally** —
+  e.g. `tests/Pest.php` binding both to the Feature suite with
+  `pest()->extend(TestCase::class)->use(RefreshDatabase::class)->beforeEach(...)
+  ->in('Feature')`. Declaring either per-file is then redundant, not a missing
+  safeguard. Read the bootstrap before calling one missing.
 - A `// Act & Assert` label — the ` & ` collapse is the **sanctioned** AAA form
   when the act and the assertion are one expression (typically
-  `expect(fn () => ...)->toThrow(...)`), guarded by
-  `tests/Unit/TestCommentStandardTest.php`. Splitting the block is a regression.
+  `expect(fn () => ...)->toThrow(...)`). Splitting the block is a regression.
 - A non-domain `tests/Feature/{Category}/` directory (`Architecture/`, `Database/`,
   `Hooks/`, `Http/`) — "tests mirror the domain tree" governs tests **of domain
   code**. A test whose subject is infra (a migration, a hook, framework behavior)
   has no domain owner; a migration spanning several domains has no non-arbitrary
   one. Filing it under a domain would be the violation.
-- A hook-test runner interpolating its script path into a shell command string
-  **without `escapeshellarg()`** (`tests/Feature/Hooks/*Test.php`). Every value is
-  locally derived — `base_path()`, `sys_get_temp_dir()` + `uniqid()` — so no
-  untrusted input reaches the string, and a path with a space fails the test loudly
-  rather than doing anything unsafe. All three hook tests share the pattern; flagging
-  one of them is also a scope-bar miss unless the PR touched that call site.
+- A test runner interpolating a script path into a shell command string
+  **without `escapeshellarg()`** when every value is locally derived —
+  `base_path()`, `sys_get_temp_dir()` + `uniqid()`. No untrusted input reaches the
+  string, and a path with a space fails the test loudly rather than doing anything
+  unsafe. Flagging one such test is also a scope-bar miss unless the PR touched
+  that call site.
 - Third-party account identifiers (ids, usernames, emails) inside an **exception
-  message** — those exceptions are `report()`ed and never thrown, so the message
-  reaches the operator's log only while the user sees generic lang-file copy.
+  message**, where the exception is `report()`ed and never thrown — the message
+  reaches the operator's log only, while the user sees generic lang-file copy.
   Carrying the detail that says which account failed and why is the design, not
   PII leakage.
 - A test file calling `DB::` / `Http::` / any facade **without** the matching
@@ -322,38 +272,36 @@ positives, never at the author's judgment.
   "this will throw at runtime", check the suite: a green run is proof the path
   executes.
 - New tests carrying **no** `// Arrange` / `// Act` / `// Assert` labels in a file
-  whose existing style is unlabeled (e.g. `TvdbUpdatesTest`, most of
-  `TmdbApiServiceTest`) — `tests/Unit/TestCommentStandardTest.php` polices the
-  *form* of labels that are present, not their presence. Matching the surrounding
-  file is correct; flag only a file that mixes both styles inconsistently within
-  itself.
+  whose existing style is unlabeled — the label standard polices the *form* of
+  labels that are present, not their presence. Matching the surrounding file is
+  correct; flag only a file that mixes both styles inconsistently within itself.
 - A domain importing `App\Domains\Common\Data\*` — `Common` is the documented
   shared kernel and explicitly holds DTOs, so depending on one is the intended
   direction. The "only through `Contracts/`" rule governs reaching into another
   **domain's** internals, not the kernel. Do **not** ask for a `Common\Data\*`
   carrier to be republished behind `Common\Contracts` or a service: it adds an
-  interface with no second implementation behind it. (`Identity\Data\VerifiedPlexIdentity`
-  → `Common\Data\PlexAccount` is the current instance.)
-- `array_key_exists()` left as the native call — `.ai/guidelines/project.md` lists
-  it under "**Stay native — do NOT 'fix' these**", because `Arr::exists($array, $key)`
-  swaps the argument order and the positional Rector map cannot express it. It is
-  also the correct choice where a key holding `null` must still count as present,
-  which `isset()` would miss. Suggesting the `Arr::` swap is a review defect.
+  interface with no second implementation behind it.
+- `array_key_exists()` left as the native call — *Laravel helpers over PHP
+  functions* in `.ai/guidelines/lundflow-laravel.md` lists it under "**Stay native
+  — do NOT 'fix' these**", because `Arr::exists($array, $key)` swaps the argument
+  order and the positional Rector map cannot express it. It is also the correct
+  choice where a key holding `null` must still count as present, which `isset()`
+  would miss. Suggesting the `Arr::` swap is a review defect.
 
 ## Model Selection
 
 An agent's `model:` frontmatter follows its role, not its convenience. Four rules,
-enforced by `tests/Unit/AgentModelPolicyTest.php`:
+enforced by the kit's own `AgentModelPolicyTest`:
 
-1. **Triage pins `haiku`** — `review-skip-check` returns a skip/no-skip call and
-   `review-summarizer` describes a diff. Both are mechanical, so they run on the
+1. **Triage pins `haiku`** — `lundflow:review-skip-check` returns a skip/no-skip call and
+   `lundflow:review-summarizer` describes a diff. Both are mechanical, so they run on the
    cheapest tier.
-2. **Compliance and mechanical wrappers pin `sonnet`** — `review-compliance` and
-   `review-compliance-validator` match code against a written rule set, and
-   `coderabbit-reviewer` shells a CLI and reshapes its output. All three judge
+2. **Compliance and mechanical wrappers pin `sonnet`** — `lundflow:review-compliance` and
+   `lundflow:review-compliance-validator` match code against a written rule set, and
+   `lundflow:coderabbit-reviewer` shells a CLI and reshapes its output. All three judge
    against something already written down, so the middle tier carries them.
-3. **Bug work and write-side agents `inherit`** — `review-bug-hunter`,
-   `review-bug-validator`, `review-fixer`, and the `tdd-*` trio run on whatever
+3. **Bug work and write-side agents `inherit`** — `lundflow:review-bug-hunter`,
+   `lundflow:review-bug-validator`, `lundflow:review-fixer`, and the `lundflow:tdd-*` trio run on whatever
    model the session runs. Finding a real defect is the hardest judgement in the
    pipeline, and a write-side agent produces code the session owns.
 4. **Never stamp a model version in prose, a commit trailer, or docs.** The harness
@@ -369,8 +317,8 @@ When a review command is invoked without an explicit ticket ID, attempt
 extraction in this order (first match wins):
 
 1. **Branch name:** Run `git branch --show-current` and apply case-insensitive
-   regex `(?i)(?<![A-Za-z])FLIX-\d+`. Take the **first match only** and normalize
-   to uppercase.
+   regex `(?i)(?<![A-Za-z]){PREFIX}-\d+`, where `{PREFIX}` is the *Ticket prefix*
+   setting. Take the **first match only** and normalize to uppercase.
 2. **PR title:** Run `gh pr view --json title -q .title` and apply the same regex
    (normalize to uppercase). Use PR title only (not body — PR descriptions
    routinely mention multiple related tickets).
@@ -379,7 +327,7 @@ extraction in this order (first match wins):
 
 ## PR Number Auto-Extraction
 
-When `/review:claude` is invoked without an explicit PR number:
+When `/lundflow:review:claude` is invoked without an explicit PR number:
 
 ```bash
 gh pr view --json number -q .number

@@ -2,10 +2,10 @@
 name: agent-writing
 description: >-
   Write and tighten documents an agent consumes — a SKILL.md, a command, an agent
-  definition, `.ai/guidelines/project.md`, a domain `GUIDELINES.md`, code comments
-  and PHP docblocks. Use when authoring or editing any of those, when asked to make
-  writing less verbose or prune comments/docblocks, or when a skill fires
-  unreliably and its description needs sharpening.
+  definition, the project's guideline source file, a domain `GUIDELINES.md`, code
+  comments and PHP docblocks. Use when authoring or editing any of those, when
+  asked to make writing less verbose or prune comments/docblocks, or when a skill
+  fires unreliably and its description needs sharpening.
 ---
 
 # Agent Writing
@@ -29,18 +29,19 @@ that still fires unreliably.
 
 **Use for**
 - Agent-instruction files: `.claude/skills/**/SKILL.md`, `.claude/commands/**/*.md`,
-  `.claude/agents/*.md`, `.ai/guidelines/project.md`, domain `GUIDELINES.md`,
-  `~/.claude/*.md`.
+  `.claude/agents/*.md`, the file the *Guideline source* setting names, domain
+  `GUIDELINES.md`, `~/.claude/*.md`.
 - Code comments and PHP docblocks (`app/**`, `resources/js/**`).
 
 **Out of scope**
 - The code itself. This skill rewrites prose and leaves behavior as it stands: an
   edit inside a `.php` file changes the comment or docblock and leaves the code it
   annotates exactly as written. Renaming and refactoring are a separate change.
-- The generated `<laravel-boost-guidelines>` block in `CLAUDE.md`/`AGENTS.md` — edit
-  `.ai/guidelines/project.md` and regenerate with `php artisan boost:install --guidelines`.
+- The generated guidelines block in `CLAUDE.md`/`AGENTS.md` — edit the file the
+  *Guideline source* setting names and regenerate with the *Regenerate guidelines*
+  setting.
 - Prose an agent writes **to a human** — a review finding, a plan summary. That
-  surface follows ASD-STE100 Simplified Technical English; see `review-pipeline`.
+  surface follows ASD-STE100 Simplified Technical English; see `lundflow:review-pipeline`.
 
 ## Shape
 
@@ -117,7 +118,7 @@ critical rules at the top or the bottom.
 
 A **context pointer** is a line held in context that names out-of-context material
 and encodes the condition for reaching it. A skill's `description` is the leading
-example; a line in `.ai/guidelines/project.md` naming `docs/agents/domain.md` is
+example; a line in the *Guideline source* file naming `docs/agents/domain.md` is
 the same object, and so is a "see X" in a command. Its *wording*, not its target,
 decides when and how reliably the agent reaches the material. A must-have target
 behind a weak pointer is a variance bug — sharpen the wording before inlining
@@ -136,7 +137,7 @@ should trigger it. It is always loaded, so it earns harder pruning than the body
 Every document and pointer spends one of two budgets:
 
 - **Context load** — the cost on the agent's window. An always-loaded line (a
-  skill description, a `project.md` pointer) spends tokens and attention every
+  skill description, a guideline-file pointer) spends tokens and attention every
   turn, whether or not it fires.
 - **Cognitive load** — the cost on the human: which documents exist and when to
   reach for each. The human is the index. This is **not a cost to minimise: it is
@@ -153,7 +154,7 @@ plus reach from other skills. A user-invoked skill (`disable-model-invocation:
 true`) costs zero context and spends *your* memory instead: you become the index.
 Choose model-invocation only when an agent or another skill must reach it on its
 own. When user-invoked skills outgrow memory, that piled-up cognitive load is
-cured by a **router** skill naming the others (`/map` here). Shared reference two
+cured by a **router** skill naming the others (`/lundflow:map` here). Shared reference two
 user-invoked skills both need can live in neither — with no descriptions, neither
 can fire the other — so push it to a plain file both point at.
 
@@ -192,11 +193,12 @@ split earns it. Two cuts:
   must reach it. You pay permanent context load for the new always-loaded
   description, so that independent reach has to be worth it.
 
-This is the lever that shaped the flow skills here: `tdd`,
-`.claude/commands/review/process.md` and `.claude/commands/plan/run.md` each cut
-their sequence at a subagent dispatch, so a phase runs with its later phases out
-of context. Preserve those boundaries when editing them — collapsing a dispatch
-into an inline step looks like simplification and silently removes the resistance.
+This is the lever that shaped the flow skills here: `lundflow:tdd`,
+`${CLAUDE_PLUGIN_ROOT}/commands/review/process.md` and
+`${CLAUDE_PLUGIN_ROOT}/commands/plan/run.md` each cut their sequence at a subagent
+dispatch, so a phase runs with its later phases out of context. Preserve those
+boundaries when editing them — collapsing a dispatch into an inline step looks like
+simplification and silently removes the resistance.
 
 ## Cut
 
@@ -250,7 +252,7 @@ through them to find what is still live.
 
 ### PHP docblocks
 - **Keep** — type info PHP can't express: `@param array<int, array{...}>`,
-  `@return list<string>`, generics (`@template`, `@param Builder<Movie>`),
+  `@return list<string>`, generics (`@template`, `@param Builder<Order>`),
   `@throws`. These feed Larastan and the IDE. Plus genuine "why" prose.
 - **Cut** — a summary line restating the method name ("Create a new user." over
   `createUser()`); `@param string $name` adding nothing past the native hint;
@@ -271,7 +273,7 @@ through them to find what is still live.
 ## Verify
 
 - Every constraint on the kept-list survives the rewrite.
-- No behavior change — for code files, `php artisan test` stays green.
+- No behavior change — for code files, the *Backend test (full)* setting stays green.
 - Run the minimal-≠-short self-check: did any cut remove a real constraint? Unsure
   means it should have been flagged, not cut.
 
