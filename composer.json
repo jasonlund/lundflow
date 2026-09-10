@@ -1,32 +1,51 @@
 {
-    "name": "jasonlund/lundflow",
-    "description": "Claude Code workflow kit: TDD, planning, review and worktree lifecycle as plugins",
-    "type": "project",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "jasonlund",
-            "email": "jasonlund@gmail.com"
-        }
-    ],
-    "autoload-dev": {
-        "psr-4": {
-            "Tests\\": "tests/"
-        }
-    },
-    "scripts": {
-        "test": "pest --compact"
-    },
-    "config": {
-        "allow-plugins": {
-            "pestphp/pest-plugin": true
-        }
-    },
-    "require-dev": {
-        "pestphp/pest": "^4.7",
-        "pestphp/pest-plugin-laravel": "^4.1",
-        "orchestra/testbench": "^11.2",
-        "symfony/yaml": "^8.1",
-        "laravel/pint": "^1.32"
+  "name": "jasonlund/lundflow",
+  "description": "Claude Code workflow kit: TDD, planning, review and worktree lifecycle as plugins, plus the artisan commands the worktree lifecycle runs",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "jasonlund",
+      "email": "jasonlund@gmail.com"
     }
+  ],
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "pest --compact"
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  },
+  "require-dev": {
+    "pestphp/pest": "^4.7",
+    "pestphp/pest-plugin-laravel": "^4.1",
+    "orchestra/testbench": "^11.2",
+    "laravel/pint": "^1.32"
+  },
+  "autoload": {
+    "psr-4": {
+      "Lundflow\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Lundflow\\LundflowServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "require": {
+    "php": "^8.3",
+    "illuminate/console": "^13.0",
+    "illuminate/support": "^13.0",
+    "illuminate/process": "^13.0",
+    "symfony/yaml": "^7.0|^8.0"
+  }
 }

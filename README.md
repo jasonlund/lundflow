@@ -1,13 +1,12 @@
 # lundflow
 
-A Claude Code workflow kit, packaged as a plugin marketplace: a test-first TDD loop,
-a gated planning pipeline, multi-agent PR review, and a LaborForest + Solo worktree
-lifecycle.
+A Claude Code workflow kit for Laravel projects: a test-first TDD loop, a gated
+planning pipeline, multi-agent PR review, and a LaborForest + Solo worktree
+lifecycle. It ships as a plugin marketplace, a composer package, and a machine
+bootstrap.
 
-> **Status: early.** Extracted from [lundflix-v2](https://github.com/jasonlund/lundflix-v2)
-> and being generalized for any Laravel project. The worktree plugin's `lf:*` artisan
-> commands still live in lundflix; they move into a composer package next. Expect
-> breaking changes.
+> **Status: early.** Extracted from [lundflix-v2](https://github.com/jasonlund/lundflix-v2),
+> where it is being dogfooded. Expect breaking changes.
 
 ## Plugins
 
@@ -20,36 +19,70 @@ lifecycle.
 Everything a plugin ships is namespaced by the plugin: skill `lundflow:tdd`, subagent
 `lundflow:tdd-test-writer`, command `/lundflow:review:claude`.
 
-## Install
+## Adopting it in a project
 
 ```
-/plugin marketplace add jasonlund/lundflow
-/plugin install lundflow@lundflow
-/plugin install laravel@lundflow
-/plugin install worktree@lundflow
+composer require --dev jasonlund/lundflow
+php artisan lundflow:install
 ```
 
-## Per-project setup
+`lundflow:install` copies `scaffold/` into the project and adds `/.context/` (where the
+review engines write run output) to `.gitignore`. Re-run it after every kit update.
 
-Plugins cannot ship project files, so `scaffold/` holds what a project copies in:
-
-| Path | Owner | Purpose |
+| Path | Owner | On re-run |
 |---|---|---|
-| `.ai/guidelines/lundflow-workflow.md`, `-linear.md`, `-worktree.md`, `-laravel.md` | kit — re-copy on update | The guideline layers every agent reads. Laravel Boost concatenates `.ai/guidelines/` into `CLAUDE.md`. |
-| `.ai/guidelines/lundflow-settings.md` | project — fill in once | The per-project values the plugins read: ticket prefix, test and finalize commands, which conventions skill serves each language, primary checkout, Solo workspace. Prose cites each as "the *Key* setting". |
-| `docs/agents/*.md` | project | Issue-tracker, triage-label and domain-doc config for the engineering skills; replace `<team>` with your Linear team. |
-| `solo.yml`, `.laborforest/workflows/`, `.mcp.json` | project | The worktree lifecycle's process list and LaborForest workflows. |
+| `.ai/guidelines/lundflow-workflow.md`, `-linear.md`, `-worktree.md`, `-laravel.md` | kit | Brought back in line with the kit — edit these in the kit, not the project. |
+| `.ai/guidelines/lundflow-settings.md` | project | Never touched. Fill in the project's values: ticket prefix, test and finalize commands, which conventions skill serves each language, primary checkout, Solo workspace. |
+| `docs/agents/*.md`, `solo.yml`, `.laborforest/workflows/*`, `.mcp.json` | project | Never touched once they exist. |
 
-Decisions behind the kit live beside the plugin they bind, in `plugins/*/docs/adr/`.
+Laravel Boost concatenates `.ai/guidelines/` into `CLAUDE.md`, so regenerate after an
+install. Then declare the plugins in the project's committed `.claude/settings.json`:
+
+```json
+{
+    "extraKnownMarketplaces": {
+        "lundflow": { "source": { "source": "github", "repo": "jasonlund/lundflow" } }
+    },
+    "enabledPlugins": {
+        "lundflow@lundflow": true,
+        "laravel@lundflow": true,
+        "worktree@lundflow": true
+    }
+}
+```
+
+Claude Code offers to install them when you trust the folder; `claude plugin install
+lundflow@lundflow --scope project` does it by hand.
+
+The package also registers the artisan commands the worktree lifecycle runs:
+`lf:branch-name`, `lf:workspace-env`, `lf:workspace-sync`, `lf:run-log`.
+
+**Dogfooding kit changes:** use a separate clone of the project, not a git worktree —
+Claude Code loads the main checkout's `.claude/` into every worktree of a repo, so a
+worktree always sees the main branch's toolkit too.
+
+## Machine setup
+
+`machine/` holds the per-machine Claude Code setup: a settings fragment, rules, the RTK
+redirect hook. `bash machine/install.sh` installs it into `~/.claude`:
+
+- merges `machine/settings.json` into `~/.claude/settings.json` — existing values win,
+  and a hook is added only if its command is not already registered;
+- copies `machine/rules/*`, `machine/hooks/*` and `RTK.md`, never overwriting a file you
+  already have;
+- makes sure `~/.claude/CLAUDE.md` includes `@RTK.md`;
+- finishes with the steps it cannot do for you.
+
+It needs `jq`, and it writes to your real `~/.claude` — read `machine/` first.
 
 ## Development
 
-The guards are Pest tests that read the plugins and scaffold off disk and run the
-hook scripts.
+The guards are Pest tests that read the plugins, scaffold and machine files off disk,
+run the hook and bootstrap scripts, and drive the artisan commands through Testbench.
 
 ```
 composer install
 composer test
 ```
 
-Hook tests need `bash`, `jq`, and `node` on the `PATH`.
+Hook and bootstrap tests need `bash`, `jq`, and `node` on the `PATH`.

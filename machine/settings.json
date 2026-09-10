@@ -1,0 +1,52 @@
+{
+    "env": {
+        "DISABLE_TELEMETRY": "1"
+    },
+    "permissions": {
+        "defaultMode": "acceptEdits"
+    },
+    "model": "opus[1m]",
+    "disableBundledSkills": true,
+    "disableRemoteControl": true,
+    "skipDangerousModePermissionPrompt": true,
+    "tui": "fullscreen",
+    "statusLine": {
+        "type": "command",
+        "command": "ccstatusline"
+    },
+    "enabledPlugins": {
+        "ralph-loop@claude-plugins-official": true
+    },
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"$HOME/.claude/hooks/rtk-redirect-guard.js\""
+                    }
+                ]
+            },
+            {
+                "matcher": "Skill",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "ccstatusline --hook"
+                    }
+                ]
+            }
+        ],
+        "UserPromptSubmit": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "ccstatusline --hook"
+                    }
+                ]
+            }
+        ]
+    }
+}
