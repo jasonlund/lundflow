@@ -178,14 +178,19 @@ final class InstallScaffold extends Command
             // Decoded as objects: an assoc round-trip turns another server's `{}` into `[]`.
             $config = json_decode(File::get($path), false, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
-            $this->output->writeln('  [install mcp refused .mcp.json: not valid JSON]');
-
-            return false;
+            return $this->refuseMcpConfig('Not valid JSON; fix .mcp.json and re-run.');
         }
 
-        $config->mcpServers ??= new stdClass;
+        if ($config instanceof stdClass) {
+            $config->mcpServers ??= new stdClass;
+        }
 
-        if (isset($config->mcpServers->{self::LINEAR_SERVER})) {
+        if (! $config instanceof stdClass || ! $config->mcpServers instanceof stdClass) {
+            return $this->refuseMcpConfig('The top level and mcpServers must be JSON objects; fix .mcp.json and re-run.');
+        }
+
+        // An existing entry is the project's, even a null one, so it is kept as is.
+        if (property_exists($config->mcpServers, self::LINEAR_SERVER)) {
             $this->output->writeln('  [install mcp kept '.self::LINEAR_SERVER.']');
 
             return true;
@@ -198,6 +203,17 @@ final class InstallScaffold extends Command
         $this->output->writeln('  [install mcp added '.self::LINEAR_SERVER.']');
 
         return true;
+    }
+
+    /**
+     * The file is left untouched, so the project fixes it by hand and re-runs.
+     */
+    private function refuseMcpConfig(string $reason): bool
+    {
+        $this->output->writeln('  [install mcp refused .mcp.json]');
+        $this->output->writeln($reason);
+
+        return false;
     }
 
     private function root(): string

@@ -152,6 +152,7 @@ describe('lundflow-linear-auth without a usable key', function (): void {
     })->with([
         'empty' => "APP_NAME=Demo\nLINEAR_API_KEY=\n",
         'empty quotes' => "APP_NAME=Demo\nLINEAR_API_KEY=\"\"\n",
+        'spaces only' => "APP_NAME=Demo\nLINEAR_API_KEY=\"   \"\n",
     ]);
 
     it('fails without a stack trace, naming LINEAR_API_KEY and the .env path, when the .env cannot be parsed', function (string $env): void {

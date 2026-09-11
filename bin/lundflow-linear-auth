@@ -20,7 +20,7 @@ try {
 
 $key = (string) ($env['LINEAR_API_KEY'] ?? '');
 
-if ($key === '') {
+if (trim($key) === '') {
     fwrite(STDERR, "LINEAR_API_KEY is missing, blank or unreadable in {$path}\n");
 
     exit(1);
