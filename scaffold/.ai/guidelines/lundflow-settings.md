@@ -15,8 +15,8 @@ such thing.
 | Frontend test (full) | `<npm test>` |
 | Finalize gates (backend) | `<vendor/bin/rector process {files}, then vendor/bin/pint --dirty --format agent>` |
 | Finalize gates (frontend) | `<npm run lint, npm run format, npm run types>` |
-| Conventions skill: PHP | `<laravel:tdd-laravel-testing>` |
-| Conventions skill: TSX/JSX | `<laravel:tdd-react-testing>` |
+| Conventions skill: backend | `<laravel:tdd-laravel-testing>` |
+| Conventions skill: frontend | `<laravel:tdd-vue-testing or laravel:tdd-react-testing>` |
 | Seam reference skill | `<laravel:codebase-design>` |
 | Primary checkout | `<~/Sites/my-app>` |
 | Solo workspace | `<my-app>` |

@@ -15,7 +15,7 @@
         {
             "name": "laravel",
             "source": "./plugins/laravel",
-            "description": "Laravel + Inertia + React test conventions and seam vocabulary for the lundflow TDD loop."
+            "description": "Laravel + Inertia + React or Vue test conventions and seam vocabulary for the lundflow TDD loop."
         },
         {
             "name": "worktree",

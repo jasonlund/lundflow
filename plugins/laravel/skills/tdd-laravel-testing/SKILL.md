@@ -137,14 +137,15 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 $this->get(route('orders.index'))
     ->assertInertia(fn (Assert $page) => $page
-        ->component('orders/Index')   // lowercase: resolves resources/js/pages/orders/Index.tsx
+        ->component('orders/Index')   // lowercase: resolves resources/js/pages/orders/Index.vue (or .tsx)
         ->has('orders', 3)
         ->where('orders.0.reference', 'ORD-1001')
     );
 ```
 
-This verifies the backend contract the React page depends on — pair it with the
-frontend `laravel:tdd-react-testing` cycle for full-stack features.
+This verifies the backend contract the frontend page (React or Vue) depends on —
+pair it with a frontend cycle under the frontend conventions skill (the
+*Conventions skill: frontend* setting) for full-stack features.
 
 ## Test-comment standard (strict)
 

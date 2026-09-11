@@ -2,7 +2,7 @@
 name: plan-slices
 description: >-
   Turn an already-written implementation plan into an ordered, test-first TDD
-  slice backlog for this Laravel + Inertia + React app. Use when you have one
+  slice backlog for this Laravel + Inertia app (React or Vue frontend). Use when you have one
   ticket/plan (architecture, files, decisions) — a Linear ticket id or a plan file
   — and need it restructured into behavior slices before running the `lundflow:tdd` skill.
   Planner/critic only — it is opinionated about testability and STOPS at the
@@ -44,15 +44,15 @@ Resolve the target before analyzing — prompt if it's unclear, never invent one
 - **Output target = the ticket body or the plan file** (see above) — single source
   of truth, not a separate doc, not chat-only.
 - **Reference, don't restate.** Slice sizing, AAA, and exact commands live in
-  `lundflow:tdd` and in the skills the *Conventions skill: PHP* / *Conventions
-  skill: TSX/JSX* settings name. Point at them.
+  `lundflow:tdd` and in the skills the *Conventions skill: backend* / *Conventions skill: frontend* settings name. Point at them.
 
 ## Step 1 — Classify the surface
 
 Mirror Step 0 of the `lundflow:tdd` skill (`${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md`):
 
 - **Backend-only** (model, action, API, policy, job) → Laravel cycles only.
-- **Frontend-only** (component/page behavior, no new server data) → React only.
+- **Frontend-only** (component/page behavior, no new server data) → frontend cycles
+  only (React or Vue, rendered through Inertia).
 - **Full-stack Inertia feature** (new page/data flow) → both, **backend first**
   (Feature test asserts the Inertia component + props), then frontend.
 
@@ -163,7 +163,7 @@ the plan file — see **Input & output target**), in this order:
 4. One block **per slice**, in execution order:
    - **Title** + a one-sentence behavior statement.
    - **Seam** — which confirmed seam this slice tests at.
-   - **Stack target** (Laravel / React) + **test file path**.
+   - **Stack target** (Laravel / the React or Vue frontend) + **test file path**.
    - The **2–6 test list** (each AAA, exactly one Act).
    - **Files involved.**
    - **RED stub note** (from Step 5).
@@ -209,9 +209,9 @@ ticket to move).
   tickets and calls this skill per ticket.
 - `${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md` — the executor; slice definition, Step 0/Step 1,
   right-reason-RED gate. Your output slots into its Step 1.
-- The skill the *Conventions skill: PHP* setting names, loaded with the Skill tool —
+- The skill the *Conventions skill: backend* setting names, loaded with the Skill tool —
   backend test conventions + commands.
-- The skill the *Conventions skill: TSX/JSX* setting names, loaded with the Skill
+- The skill the *Conventions skill: frontend* setting names, loaded with the Skill
   tool — frontend test conventions + commands.
 - The skill the *Seam reference skill* setting names, loaded with the Skill tool —
   seam / interface / depth vocabulary the Step 3 contract is written in.

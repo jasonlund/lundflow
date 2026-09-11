@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Map
 
-You don't remember 35 toolkit files — 12 skills, 11 commands, 12 subagents, this
+You don't remember 36 toolkit files — 13 skills, 11 commands, 12 subagents, this
 skill among them — so ask. This page names all of them and when to reach for each.
 It carries no description into the agent's context and fires nothing on its own.
 
@@ -44,8 +44,7 @@ individual skills only when you're re-entering partway:
 
 **Execution — `lundflow:tdd`.** One behavior slice per cycle, each phase in its own
 subagent so tests can't be retrofitted. `laravel:tdd-laravel-testing` and
-`laravel:tdd-react-testing` — the laravel plugin's picks for the *Conventions skill:
-PHP* and *Conventions skill: TSX/JSX* settings — carry the stack conventions; the
+`laravel:tdd-react-testing` or `laravel:tdd-vue-testing` (by frontend) — the laravel plugin's picks for the *Conventions skill: backend* and *Conventions skill: frontend* settings — carry the stack conventions; the
 subagents load whichever skills those settings name.
 
 **Review — `/lundflow:review:run`** chains the six stages with approval gates:
