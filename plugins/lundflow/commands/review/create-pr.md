@@ -60,7 +60,7 @@ Run the *Finalize gates (backend)* setting over the changed backend files, in th
 order it lists its commands. The formatter runs **last**, to normalize what a
 refactor tool reformatted (in a Laravel project: Rector, then Pint).
 
-### 1b. Frontend touched (`.ts`/`.tsx`/`.js`/`.css`)
+### 1b. Frontend touched (`.vue`/`.ts`/`.tsx`/`.js`/`.css`)
 Run the *Finalize gates (frontend)* setting.
 
 ### 1c. Re-run affected tests

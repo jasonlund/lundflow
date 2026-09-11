@@ -16,8 +16,8 @@ the right move is to **skip** — say so and stop.
 
 ## Procedure
 
-1. Identify the target's language and load its conventions with the Skill tool — the
-   skill the *Conventions skill: PHP* or *Conventions skill: TSX/JSX* setting names
+1. Identify the target's layer — backend (PHP) or frontend (Vue, TSX/JSX) — and load its conventions with the Skill tool — the
+   skill the *Conventions skill: backend* or *Conventions skill: frontend* setting names
    (*lundflow settings* in `CLAUDE.md`). Use it for the run command.
 2. Decide whether to refactor.
    - **Refactor when:** clear duplication, unclear names, a fat controller/component,
@@ -26,7 +26,8 @@ the right move is to **skip** — say so and stop.
 3. Apply improvements in small steps, re-running the slice after each:
    - **Laravel:** extract to actions / services / form requests; move validation to
      form requests, authorization to policies; remove duplication; clarify names.
-   - **React:** extract repeated logic into hooks, repeated markup into components;
+   - **Frontend (React or Vue):** extract repeated logic into a composable (Vue) or
+     a hook (React), repeated markup into components;
      simplify conditionals; clarify prop/variable names; preserve accessibility
      roles so behavior tests stay valid.
 4. Do NOT add new behavior, new tests, or features. Tests are the contract — they

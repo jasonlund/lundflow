@@ -17,8 +17,8 @@ speculative, no extra features, no refactoring for its own sake.
 
 1. Read the failing tests and the RED failure output. Understand the exact behavior
    the slice demands.
-2. Identify the target's language and load its conventions with the Skill tool — the
-   skill the *Conventions skill: PHP* or *Conventions skill: TSX/JSX* setting names
+2. Identify the target's layer — backend (PHP) or frontend (Vue, TSX/JSX) — and load its conventions with the Skill tool — the
+   skill the *Conventions skill: backend* or *Conventions skill: frontend* setting names
    (*lundflow settings* in `CLAUDE.md`). Use it for the run command.
 3. Write only what the slice requires to pass. Principle: **"if the tests pass, the
    implementation is complete."** Do not add code the tests do not exercise.

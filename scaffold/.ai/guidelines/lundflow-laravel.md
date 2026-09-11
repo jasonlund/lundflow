@@ -156,7 +156,7 @@ and keeps the knowledge on the type.
   objects, enums, contracts, DTOs). Keep it small — bloat couples every domain.
   `Common` depends on nothing domain-specific.
 
-### Frontend layout (Inertia + React)
+### Frontend layout (Inertia + React or Vue)
 
 Mirrors backend domains (Inertia owns `pages/`, so it can't live under a PHP
 namespace). Rule: *"Does it relate to a business domain/feature?"*
@@ -168,11 +168,12 @@ resources/js/
 └── pages/{domain}/    # Inertia entry points by domain; page-local components only
 ```
 
-- Pages group by **domain**, not by URL — `pages/identity/Login.tsx`, lowercase
-  folder matching `modules/{domain}`. The render key is the path, so the
-  controller calls `Inertia::render('identity/Login')`. App-wide pages that
-  belong to no domain (e.g. `Welcome`) sit at the `pages/` root, mirroring
-  app-wide infra staying at `app/` root.
+- Pages group by **domain**, not by URL — `pages/identity/Login.vue` in Vue,
+  `pages/identity/Login.tsx` in React, lowercase folder matching
+  `modules/{domain}`. The render key is the path, so the controller calls
+  `Inertia::render('identity/Login')`. App-wide pages that belong to no domain
+  (e.g. `Welcome`) sit at the `pages/` root, mirroring app-wide infra staying at
+  `app/` root.
 - `pages/{x}/components/` = that page only. Shared domain UI → `modules/`.
 - PascalCase components, camelCase other files, kebab-case dirs, `Page`/`Layout`
   suffixes.
@@ -210,23 +211,26 @@ LaborForest + Solo — the gate is the approval, not the UI that renders it).
   and the *Backend test (full)* setting for the suite. Feature is default; Unit only
   for isolated logic. Factories + `RefreshDatabase`; assert Inertia with
   `AssertableInertia`. Create via `php artisan make:test --pest`.
-- **Frontend:** Vitest + RTL, run through the *Frontend test (filtered)* / *Frontend
-  test (full)* settings. Colocate `*.test.tsx`; query by role/text; mock
-  `@inertiajs/react`; jsdom, setup `resources/js/test/setup.ts`.
+- **Frontend** (React or Vue, rendered through Inertia): run through the *Frontend
+  test (filtered)* / *Frontend test (full)* settings. Colocate each test beside its
+  component — `*.test.ts` beside a `.vue` component, `*.test.tsx` beside a React
+  one; query by role/text; mock the Inertia adapter (`@inertiajs/vue3` /
+  `@inertiajs/react`). The testing library, environment, and setup file come from
+  the frontend conventions skill (the *Conventions skill: frontend* setting).
 - **Full-stack Inertia** → two cycles, backend first (assert component + props),
-  then frontend (RTL renders with those props).
-- Detailed conventions: the skills the *Conventions skill: PHP* and *Conventions
-  skill: TSX/JSX* settings name (`laravel:tdd-laravel-testing` +
-  `laravel:tdd-react-testing` in a Laravel + React project).
+  then frontend (the page component renders with those props).
+- Detailed conventions: the skills the *Conventions skill: backend* and *Conventions skill: frontend* settings name (`laravel:tdd-laravel-testing`, plus
+  `laravel:tdd-vue-testing` in a Vue project or `laravel:tdd-react-testing` in a
+  React one).
 
 #### Browser tests (Pest 4 + Playwright) — the seam the other two suites can't reach
 
 `tests/Browser/{Domain}/` drives real Chromium via `visit()`. It exists for one
-reason: a Feature test posts raw HTTP so React never runs, and a Vitest test
-stubs `@inertiajs/react` so the submit never leaves the component. **Neither
-proves the form a user actually fills reaches the controller.** Write a browser
-test only for that seam — a full-stack flow whose submit/redirect round trip is
-otherwise unproven. Everything a Feature or RTL test can assert stays there;
+reason: a Feature test posts raw HTTP so the frontend never runs, and a frontend
+component test stubs the Inertia adapter so the submit never leaves the component.
+**Neither proves the form a user actually fills reaches the controller.** Write a
+browser test only for that seam — a full-stack flow whose submit/redirect round trip
+is otherwise unproven. Everything a Feature or component test can assert stays there;
 they are far faster and browser coverage that duplicates them is pure drag.
 
 - **Same process as the test.** Pest serves the app on an in-process Amp socket

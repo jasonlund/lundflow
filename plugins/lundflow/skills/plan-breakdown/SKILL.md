@@ -47,7 +47,7 @@ confirms. `lundflow:plan-slices` (the back half) stays side-effect-free.
   - `CLAUDE.md` — the project's conventions: DDD layout (`app/Domains/*`),
     Action/exception naming, service constants, cross-domain only via `Contracts/`.
   - `${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md` — slice rules; the skills the
-    *Conventions skill: PHP* / *Conventions skill: TSX/JSX* settings name, loaded
+    *Conventions skill: backend* / *Conventions skill: frontend* settings name, loaded
     with the Skill tool, for stack conventions.
   - `CONTEXT.md` + any `docs/adr/` entries touching the area (`docs/agents/domain.md`).
     Ticket titles and descriptions use the glossary's vocabulary; flag an ADR
@@ -227,6 +227,6 @@ is left untouched.
   testability gate. This skill calls it per ticket.
 - `${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md` — slice definition and the RED→GREEN→REFACTOR loop
   the tickets are ultimately executed with.
-- The skills the *Conventions skill: PHP* / *Conventions skill: TSX/JSX* settings
+- The skills the *Conventions skill: backend* / *Conventions skill: frontend* settings
   name, loaded with the Skill tool — stack conventions + exact test commands.
   Reference them; don't restate.

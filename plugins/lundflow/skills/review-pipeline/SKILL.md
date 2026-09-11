@@ -134,8 +134,7 @@ A convention is an authority only when you can cite it (Review Authority Rules,
 rule 1). Where `CLAUDE.md` endorses a pattern, the Convention Override Rule below
 keeps it out of the report.
 
-**Testing** — see the skills the *Conventions skill: PHP* and *Conventions skill:
-TSX/JSX* settings name.
+**Testing** — see the skills the *Conventions skill: backend* and *Conventions skill: frontend* settings name.
 
 ## Smell Baseline (judgement calls only)
 
@@ -225,7 +224,7 @@ they reach you through `CLAUDE.md` like any other rule.
   / `assertDatabaseMissing` — for a module whose behavior is the write, this **is**
   behavior verification, so treat it as the endorsed pattern and stay silent.
   Reasoning: the skill the *Seam reference skill* setting names; test conventions:
-  the skill the *Conventions skill: PHP* setting names.
+  the skill the *Conventions skill: backend* setting names.
 - Many small named exception classes for one domain — intentional
   (one-failure-per-class), not over-engineering.
 - Action classes named `VerbNoun` with no `Action` suffix — intentional naming.

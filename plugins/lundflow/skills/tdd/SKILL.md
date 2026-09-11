@@ -1,14 +1,15 @@
 ---
 name: tdd
 description: >-
-  Strict test-driven development workflow for this Laravel + Inertia + React app.
+  Strict test-driven development workflow for this Laravel + Inertia app (React or
+  Vue frontend).
   Use whenever asked to implement, add a feature, build, or create functionality
   (backend, frontend, or full-stack). Drives a RED → GREEN → REFACTOR cycle using
   isolated subagents so tests are written before code and cannot be faked. Invoke
   explicitly with "use tdd" or it auto-activates on feature work.
 ---
 
-# TDD Workflow (Laravel + Inertia + React)
+# TDD Workflow (Laravel + Inertia + React or Vue)
 
 Honest TDD cannot happen in one context window: the test writer's analysis bleeds
 into the implementer, and the implementer's exploration pollutes the refactorer.
@@ -69,11 +70,12 @@ subtle — smaller slices catch faking.
 Decide the surface before touching tests:
 
 - **Backend-only** (model, action, API, policy, job) → Laravel cycle only.
-- **Frontend-only** (React component/page behavior, no new server data) → React
-  cycle only.
+- **Frontend-only** (component/page behavior in the frontend — React or Vue,
+  rendered through Inertia — no new server data) → frontend cycle only.
 - **Full-stack Inertia feature** (new page/data flow) → run **two** cycles, **backend
   first** (Feature test asserting the Inertia response + props), then frontend
-  (RTL test rendering the page component with those props).
+  (a component test rendering the page component with those props, per the
+  frontend conventions skill — the *Conventions skill: frontend* setting).
 
 Then briefly answer, before any code (keeps design testable):
 - What interface changes are needed (route, controller, props, component API)?
@@ -109,7 +111,8 @@ in a **decision round**: *Asking the user a question* in
 
 **The card always carries the same seven fields** — the behavior slice, **the seam
 these tests run against** (and whether it already exists), the **list of tests** you
-intend to write, the target stack (Laravel or React), the files involved, the
+intend to write, the target stack (Laravel backend, or the React or Vue frontend),
+the files involved, the
 subagent (`lundflow:tdd-test-writer`), and the verify command. That content *is* the
 commitment; only its *approval* is a permission gate. So the fork below changes
 where the card goes and whether you wait — never what it says.
@@ -168,7 +171,8 @@ whole slice. If other tests broke, that's part of GREEN — re-spawn to fix.
 
 Spawn **`lundflow:tdd-refactorer`** with the files touched + the passing slice. It improves
 quality (duplication, naming, extract Laravel actions / form requests / services,
-extract React hooks / components) while keeping tests green. It may **skip** when
+extract frontend components and composables (Vue) or hooks (React)) while keeping
+tests green. It may **skip** when
 the implementation is already minimal and focused — a valid outcome.
 
 **GATE:** Slice must still be green after refactor (subagent shows the run).
@@ -181,7 +185,7 @@ finish the backend cycle(s) before starting the frontend cycle(s).
 ## Reference
 
 - The subagents load the target's stack conventions with the Skill tool — the skill
-  the *Conventions skill: PHP* or *Conventions skill: TSX/JSX* setting names
+  the *Conventions skill: backend* or *Conventions skill: frontend* setting names
   (*lundflow settings* in `CLAUDE.md`) — for conventions and exact commands. Verify
   actual test commands from `composer.json` / `package.json` if they differ from the
   documented defaults.

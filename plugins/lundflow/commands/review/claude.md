@@ -1,5 +1,5 @@
 ---
-description: Gate-first multi-agent PR review against the project's standards. A skip gate runs first, then the deterministic gates (the project's finalize gates and test suites — Pint/Rector/Pest/ESLint/Vitest in a Laravel + React project), then four parallel reviewers in isolated context, then one validator per finding that drops everything it cannot confirm.
+description: Gate-first multi-agent PR review against the project's standards. A skip gate runs first, then the deterministic gates (the project's finalize gates and test suites — Pint/Rector/Pest/ESLint/Vitest in a Laravel + Inertia project, React or Vue), then four parallel reviewers in isolated context, then one validator per finding that drops everything it cannot confirm.
 ---
 
 # PR Review
@@ -61,7 +61,7 @@ These produce facts. Save them as `DETERMINISTIC_FINDINGS`; they are auto-includ
 and skip validation entirely.
 
 Each gate runs a command a project setting names. The examples are what a Laravel +
-React project runs; `SOURCE` is the tool that reported the finding.
+Inertia project (React or Vue frontend) runs; `SOURCE` is the tool that reported the finding.
 
 ### 1a. Formatter (style)
 The formatter step of the *Finalize gates (backend)* setting, in its check-only mode
@@ -84,12 +84,13 @@ count here too.
 
 ### 1d. Frontend lint — when the diff touches frontend source
 The lint step of the *Finalize gates (frontend)* setting (ESLint, in a Laravel +
-React project).
+Inertia project, React or Vue).
 Errors → `SEVERITY: SHOULD_FIX`, warnings → `NIT`, `CATEGORY: convention`,
 `SOURCE: {tool}` (e.g. `eslint`).
 
 ### 1e. Frontend tests — when the diff touches frontend source
-The *Frontend test (full)* setting (Vitest, in a Laravel + React project).
+The *Frontend test (full)* setting (Vitest, in a Laravel + Inertia project, React
+or Vue).
 Each failure → `SEVERITY: BLOCKING`, `CATEGORY: testing`, `SOURCE: {tool}` (e.g.
 `vitest`).
 

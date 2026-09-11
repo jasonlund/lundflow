@@ -13,7 +13,7 @@ bootstrap.
 | Plugin | What it ships |
 |---|---|
 | `lundflow` | The stack-agnostic core. Skills `lundflow:tdd`, `lundflow:tdd-feedback`, `lundflow:plan-draft`, `lundflow:plan-breakdown`, `lundflow:plan-slices`, `lundflow:review-pipeline`, `lundflow:review-tdd-cross-slice`, `lundflow:agent-writing`, and the `/lundflow:map` router; commands `/lundflow:plan:run` and `/lundflow:review:*`; the TDD and review subagents; six guard hooks |
-| `laravel` | Laravel + Inertia + React test conventions (`laravel:tdd-laravel-testing`, `laravel:tdd-react-testing`) and the seam vocabulary (`laravel:codebase-design`) |
+| `laravel` | Laravel + Inertia + React or Vue test conventions (`laravel:tdd-laravel-testing`, `laravel:tdd-react-testing`, `laravel:tdd-vue-testing`) and the seam vocabulary (`laravel:codebase-design`) |
 | `worktree` | `/worktree:up` and `/worktree:down` for LaborForest + Solo |
 
 Everything a plugin ships is namespaced by the plugin: skill `lundflow:tdd`, subagent

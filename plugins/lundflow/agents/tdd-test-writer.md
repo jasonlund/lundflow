@@ -15,8 +15,8 @@ or modify implementation code to make them pass — that is the implementer's jo
 
 ## Procedure
 
-1. **Identify the target's language and load its conventions** with the Skill tool —
-   the skill the *Conventions skill: PHP* or *Conventions skill: TSX/JSX* setting
+1. **Identify the target's layer — backend (PHP) or frontend (Vue, TSX/JSX) — and load its conventions** with the Skill tool —
+   the skill the *Conventions skill: backend* or *Conventions skill: frontend* setting
    names (*lundflow settings* in `CLAUDE.md`). Follow that skill's conventions and
    commands exactly. Confirm the real test command from `composer.json` /
    `package.json` if present.

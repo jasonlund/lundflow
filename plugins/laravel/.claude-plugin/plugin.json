@@ -1,7 +1,7 @@
 {
     "name": "laravel",
     "version": "0.1.0",
-    "description": "Laravel + Inertia + React test conventions and seam vocabulary for the lundflow TDD loop.",
+    "description": "Laravel + Inertia + React or Vue test conventions and seam vocabulary for the lundflow TDD loop.",
     "author": {
         "name": "jasonlund"
     },

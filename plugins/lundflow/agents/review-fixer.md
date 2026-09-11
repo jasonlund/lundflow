@@ -26,7 +26,7 @@ in this context. Read these first:
 - `${CLAUDE_PLUGIN_ROOT}/skills/tdd-feedback/SKILL.md` — classify each item, then route it.
 - `${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md` — the RED → GREEN → REFACTOR mechanics.
 - The target's stack conventions — load, with the Skill tool, the skill the
-  *Conventions skill: PHP* or *Conventions skill: TSX/JSX* setting names
+  *Conventions skill: backend* or *Conventions skill: frontend* setting names
   (*lundflow settings* in `CLAUDE.md`).
 
 Classify each item and act accordingly:
