@@ -88,6 +88,9 @@ The `.mcp.json` entry overrides the user-level `linear-server` for this project 
 `mcp__linear-server__*` tools, authenticated by `vendor/bin/lundflow-linear-auth`, which
 reads the key from `.env` without booting the app.
 
+- Accept Claude Code's trust prompt in the main checkout. Until the folder is trusted the
+  helper doesn't run, and your user-level `linear-server` answers instead, quietly, in its
+  own workspace. Trust covers the checkout's worktrees too.
 - The key needs write access. The kit creates tickets, moves statuses and edits labels,
   so a restricted read-only key fails on the first write.
 - A missing or blank key shows the server as failed in `/mcp`, with a reason naming
