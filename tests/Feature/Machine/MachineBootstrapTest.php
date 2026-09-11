@@ -298,7 +298,7 @@ describe('machine/install.sh output', function (): void {
                 'the checklist heading' => ['Manual steps'],
                 'adopting the kit in a project' => ['composer require jasonlund/lundflow', 'lundflow:install'],
                 'installing the engineering skills' => ['mattpocock-skills'],
-                'registering the MCP servers' => ['Linear', 'LaborForest', 'Solo'],
+                'registering the MCP servers' => ['Linear', 'LaborForest', 'Solo', 'LINEAR_API_KEY'],
                 'trusting a project\'s Solo commands' => ['solo.yml'],
             ]))->toBe([]);
     });

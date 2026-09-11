@@ -1,0 +1,31 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Dotenv\Dotenv;
+use Dotenv\Exception\InvalidFileException;
+
+require $_composer_autoload_path ?? __DIR__.'/../vendor/autoload.php';
+
+$path = getcwd().'/.env';
+
+// Claude Code reads stdout as the headers, so failures go to stderr only and
+// nothing — not even a PHP warning or uncaught exception — may reach stdout.
+try {
+    $env = is_file($path) ? Dotenv::parse((string) file_get_contents($path)) : [];
+} catch (InvalidFileException) {
+    $env = [];
+}
+
+$key = (string) ($env['LINEAR_API_KEY'] ?? '');
+
+if ($key === '') {
+    fwrite(STDERR, "LINEAR_API_KEY is missing, blank or unreadable in {$path}\n");
+
+    exit(1);
+}
+
+echo json_encode(['Authorization' => 'Bearer '.$key]);
+
+exit(0);

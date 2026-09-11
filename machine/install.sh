@@ -113,7 +113,7 @@ print_manual_steps() {
 Manual steps this script cannot take:
   - In each project: composer require jasonlund/lundflow, then php artisan lundflow:install; trust the folder so Claude Code installs the plugins its .claude/settings.json declares.
   - Install the mattpocock-skills engineering skills under ~/.claude/skills/.
-  - Register the Linear, LaborForest and Solo MCP servers, each with its own token/app; LaborForest's claude mcp add line is on its Settings → MCP page after Save.
+  - Register the Linear, LaborForest and Solo MCP servers, each with its own token/app; LaborForest's claude mcp add line is on its Settings → MCP page after Save. A project in another Linear workspace can instead set LINEAR_API_KEY in its .env and run php artisan lundflow:install --linear-api-key.
   - Trust each project's solo.yml commands in Solo's UI.
 EOF
 }
