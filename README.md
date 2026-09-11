@@ -35,6 +35,19 @@ review engines write run output) to `.gitignore`. Re-run it after every kit upda
 | `.ai/guidelines/lundflow-settings.md` | project | Never touched. Fill in the project's values: ticket prefix, test and finalize commands, which conventions skill serves each language, primary checkout, Solo workspace. |
 | `docs/agents/*.md`, `solo.yml`, `.laborforest/workflows/*`, `.mcp.json` | project | Never touched once they exist. |
 
+Two project settings keep an install from fighting the project's own tooling:
+
+- **Keep the kit's files out of the project's formatter.** `lundflow:install` rewrites the
+  kit-owned layers on every run, so a formatter that reflows them fails its check again
+  after each update — and indent width is a per-project choice the kit can't match. Add
+  `.ai/**`, `.laborforest/**`, `docs/agents/**` and `solo.yml` to the formatter's ignore
+  list, next to the agent files it most likely skips already.
+- **With Laravel Boost, exclude its `tests` guideline.** It says copy, styling and layout
+  changes need no tests, which contradicts the kit's test-first rule. A `config/boost.php`
+  holding only `'guidelines' => ['exclude' => ['tests']]` keeps it out of every
+  regeneration; Boost merges the file one level deep, so its other options keep their
+  defaults.
+
 Laravel Boost concatenates `.ai/guidelines/` into `CLAUDE.md`, so regenerate after an
 install. Then declare the plugins in the project's committed `.claude/settings.json`:
 
