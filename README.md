@@ -33,7 +33,7 @@ review engines write run output) to `.gitignore`. Re-run it after every kit upda
 |---|---|---|
 | `.ai/guidelines/lundflow-workflow.md`, `-linear.md`, `-worktree.md`, `-laravel.md` | kit | Brought back in line with the kit — edit these in the kit, not the project. |
 | `.ai/guidelines/lundflow-settings.md` | project | Never touched. Fill in the project's values: ticket prefix, test and finalize commands, which conventions skill serves each language, primary checkout, Solo workspace. |
-| `docs/agents/*.md`, `solo.yml`, `.laborforest/workflows/*`, `.mcp.json` | project | Never touched once they exist. |
+| `docs/agents/*.md`, `solo.yml`, `.laborforest/workflows/*`, `.mcp.json` | project | Never touched once they exist, except that `--linear-api-key` adds a `linear-server` entry to `.mcp.json` when it has none. |
 
 Two project settings keep an install from fighting the project's own tooling:
 
@@ -73,6 +73,31 @@ The package also registers the artisan commands the worktree lifecycle runs:
 **Dogfooding kit changes:** use a separate clone of the project, not a git worktree —
 Claude Code loads the main checkout's `.claude/` into every worktree of a repo, so a
 worktree always sees the main branch's toolkit too.
+
+### Linear across several workspaces
+
+Linear's MCP login authorizes one workspace per machine, and every project shares it. A
+project whose tickets live in another workspace can use its own personal API key instead:
+
+1. Put `LINEAR_API_KEY=lin_api_…` in the project's `.env` — the primary checkout's;
+   `/worktree:up` copies it into each worktree.
+2. Run `php artisan lundflow:install --linear-api-key` and commit the `.mcp.json` change.
+3. Check with `/mcp`.
+
+The `.mcp.json` entry overrides the user-level `linear-server` for this project only: the same
+`mcp__linear-server__*` tools, authenticated by `vendor/bin/lundflow-linear-auth`, which
+reads the key from `.env` without booting the app.
+
+- Accept Claude Code's trust prompt in the main checkout. Until the folder is trusted the
+  helper doesn't run, and your user-level `linear-server` answers instead, quietly, in its
+  own workspace. Trust covers the checkout's worktrees too.
+- The key needs write access. The kit creates tickets, moves statuses and edits labels,
+  so a restricted read-only key fails on the first write.
+- A missing or blank key shows the server as failed in `/mcp`, with a reason naming
+  `LINEAR_API_KEY` and the `.env` path.
+- The entry is committed, so every collaborator needs their own key in their `.env`, and
+  `php` must be on the `PATH` Claude Code runs with.
+- To opt out, delete the `linear-server` entry from `.mcp.json`.
 
 ## Machine setup
 

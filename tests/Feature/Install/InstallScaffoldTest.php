@@ -133,6 +133,20 @@ function installGitignoreLines(string $dir): array
         ->all();
 }
 
+/**
+ * The `linear-server` entry `--linear-api-key` writes, hand-written from the spec.
+ *
+ * @return array{type: string, url: string, headersHelper: string}
+ */
+function installLinearServerEntry(): array
+{
+    return [
+        'type' => 'http',
+        'url' => 'https://mcp.linear.app/mcp',
+        'headersHelper' => 'php vendor/bin/lundflow-linear-auth',
+    ];
+}
+
 afterEach(function (): void {
     foreach (trackedInstallProjectDirs() as $dir) {
         File::deleteDirectory($dir);
@@ -338,4 +352,171 @@ describe('lundflow:install gitignore entry', function (): void {
         expect(installOutputLines(Artisan::output()))
             ->toContain('  [install gitignore kept /.context/]');
     });
+});
+
+// A project-scope `.mcp.json` server overrides the user-scope server of the same
+// name, so this entry is what makes the project's Linear tools authenticate with
+// the key from its own `.env`.
+describe('lundflow:install --linear-api-key', function (): void {
+    it('adds the linear-server entry beside the scaffold server in an empty project and reports it added', function (): void {
+        // Arrange
+        $dir = installProjectDir();
+
+        // Act
+        $exitCode = Artisan::call('lundflow:install', ['--path' => $dir, '--linear-api-key' => true]);
+
+        // Assert
+        $servers = json_decode(File::get($dir.'/.mcp.json'), true)['mcpServers'] ?? [];
+        expect($exitCode)->toBe(Command::SUCCESS);
+        expect($servers['laravel-boost'] ?? null)->toBe([
+            'command' => 'php',
+            'args' => ['artisan', 'boost:mcp'],
+        ]);
+        expect($servers['linear-server'] ?? null)->toBe(installLinearServerEntry());
+        expect(installOutputLines(Artisan::output()))
+            ->toContain('  [install mcp added linear-server]');
+    });
+
+    // Decoded without assoc on purpose: an assoc round-trip turns `{}` into `[]`,
+    // which a server expecting an object rejects.
+    it("preserves another server's empty-object field and writes the url unescaped with one trailing newline", function (): void {
+        // Arrange
+        $dir = installProjectDir([
+            '.mcp.json' => <<<'JSON'
+                {
+                    "mcpServers": {
+                        "other": {
+                            "command": "node",
+                            "args": ["x.js"],
+                            "env": {}
+                        }
+                    }
+                }
+
+                JSON,
+        ]);
+
+        // Act
+        $this->artisan('lundflow:install', ['--path' => $dir, '--linear-api-key' => true])->assertSuccessful();
+
+        // Assert
+        $raw = File::get($dir.'/.mcp.json');
+        $other = json_decode($raw)->mcpServers->other ?? null;
+        expect($other?->command)->toBe('node');
+        expect($other?->args)->toBe(['x.js']);
+        expect($other?->env)->toBeObject();
+        expect((array) $other?->env)->toBe([]);
+        expect($raw)
+            ->toContain('"https://mcp.linear.app/mcp"')
+            ->not->toContain('https:\/\/');
+        expect($raw)
+            ->toEndWith("\n")
+            ->not->toEndWith("\n\n");
+    });
+
+    it('creates mcpServers to hold the entry in a .mcp.json that has none', function (string $mcpJson): void {
+        // Arrange
+        $dir = installProjectDir(['.mcp.json' => $mcpJson]);
+
+        // Act
+        $this->artisan('lundflow:install', ['--path' => $dir, '--linear-api-key' => true])->assertSuccessful();
+
+        // Assert
+        expect(json_decode(File::get($dir.'/.mcp.json'), true))->toBe([
+            'mcpServers' => [
+                'linear-server' => installLinearServerEntry(),
+            ],
+        ]);
+    })->with([
+        'no mcpServers key' => "{}\n",
+        'a null mcpServers' => "{\"mcpServers\": null}\n",
+    ]);
+
+    // The helper only exists in a consuming project because composer links the
+    // package's declared bin into vendor/bin, so a command naming any other file
+    // points at nothing.
+    it('points the headers helper at a bin the package declares', function (): void {
+        // Arrange
+        $dir = installProjectDir();
+        $declaredBins = collect(json_decode(ToolkitFiles::read('composer.json'), true)['bin'] ?? [])
+            ->map(fn (string $bin): string => basename($bin))
+            ->all();
+
+        // Act
+        $this->artisan('lundflow:install', ['--path' => $dir, '--linear-api-key' => true])->assertSuccessful();
+
+        // Assert
+        $helper = json_decode(File::get($dir.'/.mcp.json'), true)['mcpServers']['linear-server']['headersHelper'] ?? '';
+        expect($helper)->toMatch('#(^|\s)vendor/bin/[^\s/]+$#');
+        expect($declaredBins)->toContain(Str::afterLast($helper, 'vendor/bin/'));
+    });
+
+    // The project may have pointed the entry elsewhere on purpose, so an existing
+    // entry is never rewritten, whatever it holds.
+    it('keeps an existing linear-server entry byte-identical and reports it kept', function (string $existing): void {
+        // Arrange
+        $dir = installProjectDir(['.mcp.json' => $existing]);
+
+        // Act
+        $exitCode = Artisan::call('lundflow:install', ['--path' => $dir, '--linear-api-key' => true]);
+
+        // Assert
+        expect($exitCode)->toBe(Command::SUCCESS);
+        expect(installOutputLines(Artisan::output()))
+            ->toContain('  [install mcp kept linear-server]');
+        expect(File::get($dir.'/.mcp.json'))->toBe($existing);
+    })->with([
+        'pointed elsewhere' => <<<'JSON'
+            {
+                "mcpServers": {
+                    "linear-server": {
+                        "type": "http",
+                        "url": "https://example.test/mcp"
+                    }
+                }
+            }
+
+            JSON,
+        'a null entry' => "{\"mcpServers\": {\"linear-server\": null}}\n",
+    ]);
+
+    // A refused run ends on the refusal: `Done.` after it would claim an install
+    // that never finished.
+    it('refuses a .mcp.json it cannot parse, names it, and leaves it byte-identical', function (): void {
+        // Arrange
+        $dir = installProjectDir(['.mcp.json' => '{"mcpServers": {']);
+
+        // Act
+        $exitCode = Artisan::call('lundflow:install', ['--path' => $dir, '--linear-api-key' => true]);
+
+        // Assert
+        expect($exitCode)->not->toBe(Command::SUCCESS);
+        expect(array_slice(installOutputLines(Artisan::output()), -2))->toBe([
+            '  [install mcp refused .mcp.json]',
+            'Not valid JSON; fix .mcp.json and re-run.',
+        ]);
+        expect(File::get($dir.'/.mcp.json'))->toBe('{"mcpServers": {');
+    });
+
+    it('refuses a .mcp.json whose top level or mcpServers is not an object and leaves it byte-identical', function (string $mcpJson): void {
+        // Arrange
+        $dir = installProjectDir(['.mcp.json' => $mcpJson]);
+
+        // Act
+        $exitCode = Artisan::call('lundflow:install', ['--path' => $dir, '--linear-api-key' => true]);
+
+        // Assert
+        expect($exitCode)->not->toBe(Command::SUCCESS);
+        expect(array_slice(installOutputLines(Artisan::output()), -2))->toBe([
+            '  [install mcp refused .mcp.json]',
+            'The top level and mcpServers must be JSON objects; fix .mcp.json and re-run.',
+        ]);
+        expect(File::get($dir.'/.mcp.json'))->toBe($mcpJson);
+    })->with([
+        'a top-level array' => "[]\n",
+        'a top-level string' => "\"servers\"\n",
+        'a top-level null' => "null\n",
+        'an mcpServers array' => "{\"mcpServers\": []}\n",
+        'an mcpServers string' => "{\"mcpServers\": \"servers\"}\n",
+    ]);
 });

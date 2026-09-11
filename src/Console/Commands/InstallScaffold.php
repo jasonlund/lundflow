@@ -9,11 +9,13 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use JsonException;
 use Lundflow\Console\Concerns\EmitsHeartbeat;
+use stdClass;
 use Symfony\Component\Finder\SplFileInfo;
 
 #[Description('Install the lundflow scaffold into a project')]
-#[Signature('lundflow:install {--path=}')]
+#[Signature('lundflow:install {--path=} {--linear-api-key}')]
 final class InstallScaffold extends Command
 {
     use EmitsHeartbeat;
@@ -39,12 +41,27 @@ final class InstallScaffold extends Command
      */
     private const string GITIGNORE_ENTRY = '/.context/';
 
+    private const string LINEAR_SERVER = 'linear-server';
+
+    /**
+     * @var array{type: string, url: string, headersHelper: string}
+     */
+    private const array LINEAR_SERVER_ENTRY = [
+        'type' => 'http',
+        'url' => 'https://mcp.linear.app/mcp',
+        'headersHelper' => 'php vendor/bin/lundflow-linear-auth',
+    ];
+
     public function handle(): int
     {
         $root = $this->root();
 
         $this->installGitignoreEntry($root);
         $this->installScaffoldFiles($root);
+
+        if ($this->option('linear-api-key') && ! $this->installLinearServer($root)) {
+            return self::FAILURE;
+        }
 
         $this->output->writeln('Done.');
 
@@ -147,6 +164,56 @@ final class InstallScaffold extends Command
     private function scaffoldPath(string $file): string
     {
         return dirname(__DIR__, 3).'/scaffold/'.$file;
+    }
+
+    /**
+     * Runs after the scaffold copy so a fresh project's seeded `.mcp.json` receives
+     * the entry.
+     */
+    private function installLinearServer(string $root): bool
+    {
+        $path = $root.'/.mcp.json';
+
+        try {
+            // Decoded as objects: an assoc round-trip turns another server's `{}` into `[]`.
+            $config = json_decode(File::get($path), false, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return $this->refuseMcpConfig('Not valid JSON; fix .mcp.json and re-run.');
+        }
+
+        if ($config instanceof stdClass) {
+            $config->mcpServers ??= new stdClass;
+        }
+
+        if (! $config instanceof stdClass || ! $config->mcpServers instanceof stdClass) {
+            return $this->refuseMcpConfig('The top level and mcpServers must be JSON objects; fix .mcp.json and re-run.');
+        }
+
+        // An existing entry is the project's, even a null one, so it is kept as is.
+        if (property_exists($config->mcpServers, self::LINEAR_SERVER)) {
+            $this->output->writeln('  [install mcp kept '.self::LINEAR_SERVER.']');
+
+            return true;
+        }
+
+        $config->mcpServers->{self::LINEAR_SERVER} = self::LINEAR_SERVER_ENTRY;
+
+        File::put($path, json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n");
+
+        $this->output->writeln('  [install mcp added '.self::LINEAR_SERVER.']');
+
+        return true;
+    }
+
+    /**
+     * The file is left untouched, so the project fixes it by hand and re-runs.
+     */
+    private function refuseMcpConfig(string $reason): bool
+    {
+        $this->output->writeln('  [install mcp refused .mcp.json]');
+        $this->output->writeln($reason);
+
+        return false;
     }
 
     private function root(): string
