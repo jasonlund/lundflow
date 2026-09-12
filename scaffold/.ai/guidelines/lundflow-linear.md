@@ -55,7 +55,7 @@ boundary named):
 | Planning done (TDD backlog appended) | `lundflow:plan-slices` | **Todo** |
 | Execution begins (first slice for the ticket) | `lundflow:tdd` | **In Progress** |
 | PR opened | `/lundflow:review:create-pr`, then **verified** (see below) | **In Review** |
-| PR merged | Linear's native GitHub integration | **Done** |
+| PR merged | whoever merges the PR (the GitHub integration, where connected, repeats it as a no-op) | **Done** |
 
 The lifecycle order is `Backlog < Todo < In Progress < In Review < Done`. Each
 transition follows one shared contract — reference this section from the skills
@@ -73,6 +73,12 @@ rather than restating it:
 - **Active ticket only.** Each ticket transitions when *its own* work runs;
   sibling sub-tickets and a decomposed parent are left untouched. (Exception:
   at PR-open, every ticket the PR covers moves to In Review together.)
+- **Merge writes Done itself.** Linear's GitHub integration closes a ticket at
+  merge only in a workspace where it is connected and mapped; without it the
+  ticket sits in In Review after the branch is gone. So the merge step writes
+  `Done` as soon as the merge is confirmed, rather than waiting on a writer that
+  may not exist. Forward-only makes that safe either way: where the integration
+  does fire, the second write lands on a ticket already Done and changes nothing.
 - **Report, don't ask.** State the transition in one line; the change is
   automatic — never prompt for permission.
 
