@@ -115,6 +115,11 @@ describing what the PR does and why, in the house style (present tense, names th
 key classes/files). Not a wall of bullets. If the diff spans several distinct
 concerns, a short bullet list may follow the paragraph — but summary-first, always.
 
+When the diff touches frontend code and this session holds a `⚠️ Not browser-verified`
+flag or no record that the render check ran (*Browser verification* in
+`.ai/guidelines/lundflow-workflow.md`), add
+`Browser verification: not done — {reason}` before the trailer.
+
 End the body with the standard trailer:
 ```
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

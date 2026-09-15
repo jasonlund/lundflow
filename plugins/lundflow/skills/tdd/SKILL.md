@@ -32,6 +32,8 @@ orchestrator ─spawn▶ tdd-implementer (🟢)  → returns passing output → 
 orchestrator ─spawn▶ tdd-refactorer (🔵)   → returns green output   → GATE
    ▼
 next slice → new RED plan card
+   ▼
+ticket's last frontend slice green → YOU run the render check (Step 5)
 ```
 
 ## Core rules
@@ -180,7 +182,14 @@ the implementation is already minimal and focused — a valid outcome.
 ## Step 4 — Loop
 
 Pick the next slice and return to RED (new plan card). For full-stack features,
-finish the backend cycle(s) before starting the frontend cycle(s).
+finish the backend cycle(s) before starting the frontend cycle(s). After a ticket's
+last frontend slice is green, run Step 5.
+
+## Step 5 — Render check
+
+Run once per ticket, yourself, after the ticket's last frontend slice is green;
+backend-only tickets skip it. It is not a gate. Follow *Browser verification* in
+`.ai/guidelines/lundflow-workflow.md`.
 
 ## Reference
 

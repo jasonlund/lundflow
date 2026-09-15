@@ -98,6 +98,8 @@ Situations that generate work and then merge onto the flow.
   under, the two renderings that carry it (the decision round, and the disposition
   list `/lundflow:review:process` uses), and the silence contract that makes an
   unanswered question lock at its recommendation.
+- **Browser verification** — also a section of `.ai/guidelines/lundflow-workflow.md`:
+  the render check after any UI change, and the flag written when it cannot run.
 
 ## Subagents
 
