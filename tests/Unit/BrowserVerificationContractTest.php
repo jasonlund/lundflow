@@ -105,6 +105,25 @@ describe('browser verification rule', function () use ($anchor, $guideline, $sec
         // Assert
         expect($missing)->toBe([]);
     });
+
+    it('covers a check that runs and fails, not only one that cannot run', function () use ($anchor, $guideline, $sectionOf): void {
+        // A console error or a build broken by the code is the agent's own failure to
+        // fix, so the rule sends it back to the work, and a failure that survives the fix
+        // reaches the summary through the same flag, its reason naming the failure.
+        // Arrange
+        $section = $sectionOf($guideline, $anchor);
+        $required = [
+            'a failed check, fixed as part of the work' => '~failed check.{0,200}?fixed as part of the work~is',
+            'a build that fails on the code, counted as a failure' => '~build[^\n]{0,30}fail[^\n]{0,30}code~i',
+            'a check that still fails after the fix' => '~still fails~i',
+        ];
+
+        // Act
+        $missing = ToolkitFiles::missingPatterns($section, $required);
+
+        // Assert
+        expect($missing)->toBe([]);
+    });
 });
 
 describe('citing sites', function () use ($citation, $sectionOf): void {
@@ -126,6 +145,30 @@ describe('citing sites', function () use ($citation, $sectionOf): void {
 
         // Assert
         expect($missing)->toBe([]);
+    });
+
+    it('triggers the render check on a user-visible change, not on frontend code alone', function () use ($sectionOf): void {
+        // A backend change such as an Inertia controller's props can alter a page with
+        // no frontend slice, so every site keys the check on what a user sees.
+        // Arrange
+        $step = $sectionOf('plugins/lundflow/skills/tdd/SKILL.md', 'Step 5 — Render check');
+        $process = 'plugins/lundflow/commands/review/process.md';
+        $verify = $sectionOf($process, 'Phase 4');
+        $summary = $sectionOf($process, 'Phase 6');
+        $createPr = ToolkitFiles::read('plugins/lundflow/commands/review/create-pr.md');
+
+        // Act
+        $missing = [
+            ...ToolkitFiles::missingPatterns($step, ['the tdd skip keyed on what a user sees' => '~nothing a user sees~i']),
+            ...ToolkitFiles::missingPatterns($verify, ['the Phase 4 trigger keyed on what a user sees' => '~changed anything a user sees~i']),
+            ...ToolkitFiles::missingPatterns($summary, ['the Phase 6 n/a keyed on what a user sees' => '~n/a \(nothing a user sees changed\)~i']),
+            ...ToolkitFiles::missingPatterns($createPr, ['the PR-body trigger keyed on what a user sees' => '~changes anything a user sees~i']),
+        ];
+        $surviving = ToolkitFiles::survivingPatterns($step, ['a backend-only skip in the tdd step' => '~backend-only~i']);
+
+        // Assert
+        expect($missing)->toBe([])
+            ->and($surviving)->toBe([]);
     });
 
     it('runs the render check in the review gate and reports it in the summary', function () use ($citation, $sectionOf): void {

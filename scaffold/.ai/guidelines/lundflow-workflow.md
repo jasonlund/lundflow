@@ -49,10 +49,13 @@ anything else that renders — it renders the result and checks it in a real bro
 - **Reaching the app:** open the workspace URL `lf:workspace-env` derives. With no
   dev server up, the agent may run `npm run build`. Starting a Solo process stays
   human-only (*Local worktree tooling* in `.ai/guidelines/lundflow-worktree.md`).
+- **A failed check** — a console error, the changed UI missing or broken, or
+  `npm run build` failing on the code — is fixed as part of the work, then re-run.
 - **Not a gate.** When neither tool can run the check — extension not connected, no
-  server, a failed build — continue the work, write
-  `⚠️ Not browser-verified — {reason}` in the next summary, and ask the user to fix
-  the blocker so the check can re-verify in the browser.
+  server — or the check still fails after the fix, continue the work and write
+  `⚠️ Not browser-verified — {reason}` in the next summary, the reason naming the
+  blocker or the failure. For a blocker, ask the user to fix it so the check can
+  re-verify in the browser.
 - **Who runs it:** the session's main agent — in a TDD or review flow, the
   orchestrator. Phase subagents and fixers carry no browser tools.
 
