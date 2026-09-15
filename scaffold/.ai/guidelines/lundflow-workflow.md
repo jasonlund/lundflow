@@ -37,6 +37,28 @@ already says it.**
 Both a rule and an operator step? Rule → the *Guideline source*, step → README,
 cross-reference — don't duplicate.
 
+## Browser verification
+
+When an agent changes anything a user sees — a frontend page or component, or
+anything else that renders — it renders the result and checks it in a real browser.
+
+- **Tools, in order:** Claude in Chrome first, Playwright second — both driving the
+  live page, not a written test.
+- **The check:** the page renders, the changed UI is visible and behaves as
+  intended, and the console shows no JavaScript errors.
+- **Reaching the app:** open the workspace URL `lf:workspace-env` derives. With no
+  dev server up, the agent may run `npm run build`. Starting a Solo process stays
+  human-only (*Local worktree tooling* in `.ai/guidelines/lundflow-worktree.md`).
+- **A failed check** — a console error, the changed UI missing or broken, or
+  `npm run build` failing on the code — is fixed as part of the work, then re-run.
+- **Not a gate.** When neither tool can run the check — extension not connected, no
+  server — or the check still fails after the fix, continue the work and write
+  `⚠️ Not browser-verified — {reason}` in the next summary, the reason naming the
+  blocker or the failure. For a blocker, ask the user to fix it so the check can
+  re-verify in the browser.
+- **Who runs it:** the session's main agent — in a TDD or review flow, the
+  orchestrator. Phase subagents and fixers carry no browser tools.
+
 ## Asking the user a question
 
 Every question an agent puts to the user in this repo is **plain markdown in the

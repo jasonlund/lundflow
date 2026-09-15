@@ -399,6 +399,9 @@ has returned and every blocker is settled.
    - the formatter step of the *Finalize gates (backend)* setting, for the style fix.
 3. Re-dispatch a fixer for anything red or unaddressed, or surface it to the user. A red
    suite stops the run here.
+4. When any fix changed anything a user sees, run the render check per
+   *Browser verification* in `.ai/guidelines/lundflow-workflow.md`. An unverifiable
+   or failed check does not stop the run.
 
 ---
 
@@ -488,6 +491,7 @@ Summarize the run:
 - Human threads left open for the reviewer: {count}   # only with --leave-human-open
 - Files changed: {list}
 - Tests: {pass/fail summary} · Formatter: {clean/fixed}
+- Browser verification: {verified | ⚠️ Not browser-verified — {reason} | n/a (nothing a user sees changed)}
 ```
 
 **Committing is the user's call.** Prompt them to commit and push. On approval, commit
