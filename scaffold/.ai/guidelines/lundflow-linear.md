@@ -1,7 +1,14 @@
 ## Linear (issue tracking)
 
-- **Always use the `mcp__linear-server__*` tools** for every lookup/create/update
+- **Use the `mcp__linear-server__*` tools first** for every lookup/create/update
   — never assume or hand-edit ticket state.
+- **MCP in the wrong workspace → Linear's GraphQL API.** The MCP login covers one
+  workspace per machine, so it can answer for another team: `get_issue
+  {PREFIX}-NNN` 404s or returns someone else's tickets. Then run the same
+  operation against `https://api.linear.app/graphql` with `LINEAR_API_KEY` from
+  the checkout's `.env`, sent as the raw key in `Authorization` — no `Bearer`
+  prefix. Never skip the operation or stop for a restart, and never echo the key
+  into chat, commits or files.
 - **Write to the ticket body, never comment.** When recording progress, plans,
   results, or deviations, replace or append the ticket's **description**
   (`save_issue` with `description`) — keep it the single source of truth, not
@@ -62,7 +69,8 @@ transition follows one shared contract — reference this section from the skill
 rather than restating it:
 
 - **Primitive.** `mcp__linear-server__save_issue(id: <{PREFIX}-XXX>, state: "<name>")`
-  — pass the status **name**, never an id. MCP only; no bash/token path.
+  — pass the status **name**, never an id. On the GraphQL fallback, look the name
+  up in the team's `states` and send that state's id to `issueUpdate`.
 - **Resolve the ticket from the branch** (`{prefix}-XXX-…` → `{PREFIX}-XXX`, the
   `lundflow:review-pipeline` Ticket ID Auto-Extraction). **No ticket resolves →
   skip silently** (the "when applicable").

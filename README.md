@@ -98,6 +98,8 @@ reads the key from `.env` without booting the app.
 - The entry is committed, so every collaborator needs their own key in their `.env`, and
   `php` must be on the `PATH` Claude Code runs with.
 - To opt out, delete the `linear-server` entry from `.mcp.json`.
+- If the MCP still answers for the other workspace, agents run the operation through
+  Linear's GraphQL API with the same key rather than skipping it.
 
 ## Machine setup
 
