@@ -4,11 +4,13 @@
   — never assume or hand-edit ticket state.
 - **MCP in the wrong workspace → Linear's GraphQL API.** The MCP login covers one
   workspace per machine, so it can answer for another team: `get_issue
-  {PREFIX}-NNN` 404s or returns someone else's tickets. Then run the same
-  operation against `https://api.linear.app/graphql` with `LINEAR_API_KEY` from
-  the checkout's `.env`, sent as the raw key in `Authorization` — no `Bearer`
-  prefix. Never skip the operation or stop for a restart, and never echo the key
-  into chat, commits or files.
+  {PREFIX}-NNN` 404s or returns someone else's tickets. One read confirms the
+  workspace before the session's first write, and a wrong answer puts **every**
+  later operation on the GraphQL path — reads and writes alike, not just the one
+  that caught it. There, run the same operation against
+  `https://api.linear.app/graphql` with `LINEAR_API_KEY` from the checkout's
+  `.env`, sent as the raw key in `Authorization` — no `Bearer` prefix. Complete
+  the operation on this path, and keep the key out of chat, commits and files.
 - **Write to the ticket body, never comment.** When recording progress, plans,
   results, or deviations, replace or append the ticket's **description**
   (`save_issue` with `description`) — keep it the single source of truth, not
