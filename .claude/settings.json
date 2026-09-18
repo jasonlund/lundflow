@@ -1,0 +1,10 @@
+{
+    "extraKnownMarketplaces": {
+        "lundflow": { "source": { "source": "github", "repo": "jasonlund/lundflow" } }
+    },
+    "enabledPlugins": {
+        "lundflow@lundflow": true,
+        "laravel@lundflow": true,
+        "worktree@lundflow": true
+    }
+}
