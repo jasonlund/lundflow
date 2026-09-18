@@ -185,7 +185,9 @@ wizard is for where a human is genuinely in the loop.
 ### Issue tracker
 
 Linear, tickets `{PREFIX}-123` (where `{PREFIX}` is the *Ticket prefix* setting),
-via `mcp__linear-server__*` only — GitHub Issues are unused. See
+via `mcp__linear-server__*`, or Linear's GraphQL API with the project's
+`LINEAR_API_KEY` when the MCP answers for another workspace — GitHub Issues are
+unused. See
 `docs/agents/issue-tracker.md`.
 
 ### Triage labels

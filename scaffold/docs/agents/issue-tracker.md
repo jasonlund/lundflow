@@ -3,8 +3,10 @@
 Issues and specs live in Linear, on the team whose identifiers carry the *Ticket
 prefix* setting (`{PREFIX}-123`); replace `<team>` below with that team's name.
 **Every operation goes through the `mcp__linear-server__*` MCP tools** — never the
-`gh` CLI, never a raw API token. The GitHub remote hosts code and PRs only; GitHub
-Issues are unused.
+`gh` CLI. When the MCP answers for another workspace, the same operation goes
+through Linear's GraphQL API with the checkout's `LINEAR_API_KEY` (see *Linear
+(issue tracking)* in the repo guidelines). The GitHub remote hosts code and PRs
+only; GitHub Issues are unused.
 
 The *Linear (issue tracking)* section of the repo guidelines
 (`.ai/guidelines/lundflow-linear.md`) is authoritative and outranks anything here;
