@@ -125,4 +125,11 @@ composer install
 composer test
 ```
 
+lundflow is installed into itself, so `/lundflow:*` and `/worktree:up LUN-NNN` work
+here as in any project. `artisan` is a Testbench shim for the `lf:*` commands; its
+`up` workflow fast-forwards, copies `.env` and runs Composer, with no database or site.
+The kit-owned guidelines and docs are symlinks into `scaffold/`, and `CLAUDE.md` loads
+them. One-time machine steps: register the checkout in LaborForest, and put
+`LINEAR_API_KEY` in `.env`.
+
 Hook and bootstrap tests need `bash`, `jq`, and `node` on the `PATH`.

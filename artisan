@@ -1,0 +1,10 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// lundflow is a package, so Testbench boots it — pinned to this checkout, since
+// `up` runs the primary's artisan from inside a workspace.
+putenv('TESTBENCH_WORKING_PATH='.__DIR__);
+
+require __DIR__.'/vendor/bin/testbench';

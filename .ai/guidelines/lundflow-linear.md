@@ -1,0 +1,1 @@
+../../scaffold/.ai/guidelines/lundflow-linear.md

@@ -21,8 +21,8 @@ use Symfony\Component\Yaml\Yaml;
  * and nothing more, so a tracked file whose working-tree edits are never
  * committed still passes. Its path list names only the files this branch newly
  * commits — the ones previously reachable through a machine-local
- * `.git/info/exclude` line. `.mcp.json` is absent because it was never at risk of that; its contents are pinned by the
- * server assertion below instead.
+ * `.git/info/exclude` line. `scaffold/.mcp.json` is absent because it was never
+ * at risk of that; its contents are pinned by the server assertion below instead.
  */
 
 /** Repo-root paths whose contents must reach every checkout. */
@@ -56,14 +56,46 @@ $soloProcesses = function () use ($repoRoot): array {
 };
 
 /**
- * `.mcp.json`'s server map, keyed by server name.
+ * A repo-root JSON file, decoded to an array.
  *
  * @return array<string, mixed>
  */
-$mcpServers = function () use ($repoRoot): array {
-    $config = (array) json_decode((string) file_get_contents($repoRoot().'/scaffold/.mcp.json'), true);
+$rootJson = function (string $path) use ($repoRoot): array {
+    return (array) json_decode((string) file_get_contents($repoRoot().'/'.$path), true);
+};
 
-    return (array) ($config['mcpServers'] ?? []);
+/**
+ * A `.mcp.json`'s server map, keyed by server name.
+ *
+ * @return array<string, mixed>
+ */
+$mcpServers = fn (string $path = 'scaffold/.mcp.json'): array => (array) ($rootJson($path)['mcpServers'] ?? []);
+
+/**
+ * The subset of repo-root paths git does not track. Asks git rather than the
+ * disk, so a file kept alive only by a machine-local ignore rule still counts.
+ *
+ * @param  list<string>  $paths
+ * @return list<string>
+ */
+$untrackedOf = function (array $paths) use ($repoRoot): array {
+    $process = new Process(['git', 'ls-files', '-z', '--', ...$paths], $repoRoot());
+    $process->run();
+    $tracked = explode("\0", $process->getOutput());
+
+    return collect($paths)->reject(fn (string $path): bool => in_array($path, $tracked, true))->values()->all();
+};
+
+/**
+ * A repo-root file's lines, each trimmed.
+ *
+ * @return list<string>
+ */
+$rootFileLines = function (string $path) use ($repoRoot): array {
+    return collect(file($repoRoot().'/'.$path, FILE_IGNORE_NEW_LINES) ?: [])
+        ->map(fn (string $line): string => trim($line))
+        ->values()
+        ->all();
 };
 
 describe('solo.yml processes', function () use ($soloProcesses): void {
@@ -140,21 +172,146 @@ describe('.mcp.json servers', function () use ($mcpServers): void {
     });
 });
 
-describe('version control', function () use ($repoRoot, $committedToolingPaths): void {
-    it('tracks every committed tooling file in git', function () use ($repoRoot, $committedToolingPaths): void {
+describe('version control', function () use ($untrackedOf, $committedToolingPaths): void {
+    it('tracks every committed tooling file in git', function () use ($untrackedOf, $committedToolingPaths): void {
         // A machine-local ignore rule (.gitignore, or .git/info/exclude, which no
         // checkout can see) keeps these files working locally while they reach
         // nobody. Ask git what it actually tracks rather than whether the file
         // exists on this disk.
         // Arrange
-        $process = new Process(['git', 'ls-files', '-z', '--', ...$committedToolingPaths], $repoRoot());
+        // the file-scoped path list is the whole input
 
         // Act
-        $process->run();
+        $untracked = $untrackedOf($committedToolingPaths);
 
         // Assert
-        $tracked = collect(explode("\0", $process->getOutput()))->filter()->values()->all();
-        $untracked = collect($committedToolingPaths)->reject(fn (string $path): bool => in_array($path, $tracked, true))->values()->all();
         expect($untracked)->toBe([]);
+    });
+});
+
+describe('repo self-install', function () use ($untrackedOf, $repoRoot, $rootFileLines, $rootJson, $mcpServers): void {
+    // The kit installed into itself works only for a checkout that holds these
+    // files; the tracking tests ask git, not the disk, because only that proves a
+    // fresh clone gets them.
+    it('tracks the self-install entry points and tooling config', function () use ($untrackedOf): void {
+        // Arrange
+        $paths = [
+            'artisan',
+            'CLAUDE.md',
+            '.mcp.json',
+            'solo.yml',
+            '.claude/settings.json',
+            '.laborforest/workflows/up.yaml',
+            '.laborforest/workflows/down.yaml',
+        ];
+
+        // Act
+        $untracked = $untrackedOf($paths);
+
+        // Assert
+        expect($untracked)->toBe([]);
+    });
+
+    it('tracks the self-install guidelines and agent docs', function () use ($untrackedOf): void {
+        // Arrange
+        $paths = [
+            '.ai/guidelines/lundflow-linear.md',
+            '.ai/guidelines/lundflow-settings.md',
+            '.ai/guidelines/lundflow-workflow.md',
+            '.ai/guidelines/lundflow-worktree.md',
+            'docs/agents/domain.md',
+            'docs/agents/issue-tracker.md',
+            'docs/agents/linear-pr-open-contention.md',
+            'docs/agents/triage-labels.md',
+        ];
+
+        // Act
+        $untracked = $untrackedOf($paths);
+
+        // Assert
+        expect($untracked)->toBe([]);
+    });
+
+    // The committed file is read rather than asking `git check-ignore`, which also
+    // honors the machine-local `.git/info/exclude` and so passes on one machine
+    // while every other checkout commits the file.
+    it('ignores the local env file holding the Linear API key', function () use ($rootFileLines): void {
+        // Arrange
+        // the committed file is the whole input; reading it is the act
+
+        // Act
+        $lines = $rootFileLines('.gitignore');
+
+        // Assert
+        expect($lines)->toContain('/.env');
+    });
+
+    it('ignores the LaborForest run logs', function () use ($rootFileLines): void {
+        // Arrange
+        // the committed file is the whole input; reading it is the act
+
+        // Act
+        $lines = $rootFileLines('.gitignore');
+
+        // Assert
+        expect($lines)->toContain('/.laborforest/ignored/');
+    });
+
+    // One copy of the kit's prose: the self-install reads scaffold/ through a
+    // symlink, so an edit made in either place is the same edit.
+    it('links each kit-owned guideline and doc into scaffold', function (string $path) use ($repoRoot): void {
+        // Arrange
+        $installed = $repoRoot().'/'.$path;
+
+        // Act
+        $resolved = is_link($installed) ? realpath($installed) : false;
+
+        // Assert
+        expect($resolved)->toBe(realpath($repoRoot()).'/scaffold/'.$path);
+    })->with([
+        '.ai/guidelines/lundflow-linear.md',
+        '.ai/guidelines/lundflow-workflow.md',
+        '.ai/guidelines/lundflow-worktree.md',
+        'docs/agents/issue-tracker.md',
+        'docs/agents/linear-pr-open-contention.md',
+    ]);
+
+    it('imports every lundflow guideline from CLAUDE.md', function () use ($rootFileLines): void {
+        // Arrange
+        $expected = [
+            '@.ai/guidelines/lundflow-settings.md',
+            '@.ai/guidelines/lundflow-workflow.md',
+            '@.ai/guidelines/lundflow-linear.md',
+            '@.ai/guidelines/lundflow-worktree.md',
+        ];
+
+        // Act
+        $lines = $rootFileLines('CLAUDE.md');
+
+        // Assert
+        expect($lines)->toContain(...$expected);
+    });
+
+    it('registers the Linear MCP server authenticated by the kit helper', function () use ($mcpServers): void {
+        // Arrange
+        // the committed file is the whole input; reading it is the act
+
+        // Act
+        $servers = $mcpServers('.mcp.json');
+
+        // Assert
+        expect($servers)->toHaveKey('linear-server')
+            ->and($servers['linear-server']['headersHelper'] ?? null)->toBe('php bin/lundflow-linear-auth');
+    });
+
+    it('enables the worktree plugin', function () use ($rootJson): void {
+        // Arrange
+        // the committed file is the whole input; reading it is the act
+
+        // Act
+        $plugins = (array) ($rootJson('.claude/settings.json')['enabledPlugins'] ?? []);
+
+        // Assert
+        expect($plugins['worktree@lundflow'] ?? null)->toBeTrue();
     });
 });
