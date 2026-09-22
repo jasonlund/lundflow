@@ -35,17 +35,18 @@ use Symfony\Component\Yaml\Yaml;
 $primaryGuard = 'test "{{ WORKSPACE_DIR }}" != "{{ PROJECT_PRIMARY_DIR }}"';
 
 /**
- * The parsed contents of one workflow file.
+ * The parsed contents of one workflow file. `$root` is relative to the repo
+ * root: `scaffold` is the copy `lundflow:install` ships, `.` is the repo's own.
  *
  * @return array<string, mixed>
  */
-$workflow = function (string $name): array {
+$workflow = function (string $name, string $root = 'scaffold'): array {
     // The Unit suite doesn't boot the app container, so resolve the repo root
     // from this file's location rather than base_path(). One level deeper than
     // the guards in tests/Unit, hence 3.
-    $root = dirname(__DIR__, 3);
+    $repo = dirname(__DIR__, 3);
 
-    return (array) Yaml::parseFile($root.'/scaffold/.laborforest/workflows/'.$name.'.yaml');
+    return (array) Yaml::parseFile($repo.'/'.$root.'/.laborforest/workflows/'.$name.'.yaml');
 };
 
 /**
@@ -112,6 +113,9 @@ $guardAudit = (fn (array $steps, array $acts): array => collect($acts)
         ];
     })
     ->all());
+
+/** Whether a `run` swallows its own non-zero exit rather than aborting the workflow. */
+$toleratesFailure = fn (string $run): bool => preg_match('/\|\|\s*(true\b|echo\b)/', $run) === 1;
 
 describe('workflow declarations', function () use ($workflow): void {
     it('declares each workflow with the status transition it performs', function () use ($workflow): void {
@@ -219,26 +223,25 @@ describe('primary-checkout guard', function () use ($workflow, $stepsOf, $primar
     });
 });
 
-describe('down.yaml failure tolerance', function () use ($workflow, $stepsOf, $destructiveActs): void {
+describe('down.yaml failure tolerance', function () use ($workflow, $stepsOf, $destructiveActs, $toleratesFailure): void {
     // LaborForest runs each step under `set -eu` and forces the workspace to
     // ERROR when one exits non-zero — and it offers Remove only on a suspended
     // workspace, so a teardown that aborts leaves the worktree undeletable. An
     // already-unlinked site or an unreachable MySQL is enough to trigger it.
-    it('lets every destructive step fail without aborting the run', function () use ($workflow, $stepsOf, $destructiveActs): void {
+    it('lets every destructive step fail without aborting the run', function () use ($workflow, $stepsOf, $destructiveActs, $toleratesFailure): void {
         // Arrange
         $steps = $stepsOf($workflow('down'));
-        $tolerates = fn (string $run): bool => preg_match('/\|\|\s*(true\b|echo\b)/', $run) === 1;
 
         // Act
         $report = collect($destructiveActs['down'])
-            ->map(function (Closure $matches) use ($steps, $tolerates): array {
+            ->map(function (Closure $matches) use ($steps, $toleratesFailure): array {
                 $hits = collect($steps)->filter(fn (array $step): bool => $matches((string) ($step['run'] ?? '')));
 
                 return [
                     'present' => $hits->isNotEmpty(),
                     'aborts the run' => $hits
                         ->map(fn (array $step): string => (string) ($step['run'] ?? ''))
-                        ->reject($tolerates)
+                        ->reject($toleratesFailure)
                         ->values()
                         ->all(),
                 ];
@@ -455,5 +458,81 @@ describe('up.yaml env derivation', function () use ($workflow, $runsOf): void {
             'lf:workspace-env' => true,
             'inline sed' => false,
         ]);
+    });
+});
+
+describe('repo workflows', function () use ($workflow, $stepsOf, $runsOf, $destructiveActs, $guardAudit, $toleratesFailure): void {
+    // lundflow is installed into itself, but as a package it has no database or
+    // Herd site, so its own workflows are a slimmer pair than the scaffold's and
+    // need their own guard: the scaffold assertions above never read them.
+    it('declares up as suspended to ready and down as ready to suspended', function () use ($workflow): void {
+        // Arrange
+        $names = ['up', 'down'];
+
+        // Act
+        $declared = collect($names)
+            ->mapWithKeys(fn (string $name): array => [$name => [
+                'require_status' => $workflow($name, '.')['require_status'] ?? null,
+                'ending_status' => $workflow($name, '.')['ending_status'] ?? null,
+            ]])
+            ->all();
+
+        // Assert
+        expect($declared)->toBe([
+            'up' => ['require_status' => 'suspended', 'ending_status' => 'ready'],
+            'down' => ['require_status' => 'ready', 'ending_status' => 'suspended'],
+        ]);
+    });
+
+    // Run in the primary checkout, the sync would clear its `.laborforest/` and
+    // drag its working tree onto origin/main; the copy would `cp` the primary's
+    // `.env` onto itself, which exits non-zero and aborts the run.
+    it('guards the workspace sync and the .env copy in up against the primary checkout', function () use ($workflow, $stepsOf, $destructiveActs, $guardAudit): void {
+        // Arrange
+        $steps = $stepsOf($workflow('up', '.'));
+        $acts = [
+            'workspace sync' => $destructiveActs['up']['workspace sync'],
+            'env copy' => fn (string $run): bool => preg_match('/\bcp\b.*\.env\b/', $run) === 1,
+        ];
+
+        // Act
+        $report = $guardAudit($steps, $acts);
+
+        // Assert
+        expect($report)->toBe([
+            'workspace sync' => ['present' => true, 'unguarded' => []],
+            'env copy' => ['present' => true, 'unguarded' => []],
+        ]);
+    });
+
+    // Solo's CLI silently no-ops when its per-machine CLI access is off, so a
+    // workflow step reaching for it can pass while doing nothing. Registration
+    // belongs to the agent driving the workflow, not the workflow.
+    it('invokes solo from no step in either workflow', function () use ($workflow, $runsOf): void {
+        // Arrange
+        $runs = collect(['up', 'down'])
+            ->flatMap(fn (string $name): Collection => $runsOf($workflow($name, '.')));
+
+        // Act
+        $soloRuns = $runs->filter(fn (string $run): bool => preg_match('/\bsolo\b/i', $run) === 1)->values()->all();
+
+        // Assert
+        expect($runs)->not->toBeEmpty()
+            ->and($soloRuns)->toBe([]);
+    });
+
+    // A down step that exits non-zero leaves the workspace in ERROR, never
+    // suspended, and LaborForest offers Remove only on a suspended workspace.
+    it('exits 0 from every step in down', function () use ($workflow, $runsOf, $toleratesFailure): void {
+        // Arrange
+        $runs = $runsOf($workflow('down', '.'));
+        $exitsZero = fn (string $run): bool => trim($run) === 'true' || $toleratesFailure($run);
+
+        // Act
+        $mayFail = $runs->reject($exitsZero)->values()->all();
+
+        // Assert
+        expect($runs)->not->toBeEmpty()
+            ->and($mayFail)->toBe([]);
     });
 });

@@ -1,0 +1,1 @@
+../../scaffold/docs/agents/issue-tracker.md

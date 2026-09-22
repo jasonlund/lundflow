@@ -1,0 +1,9 @@
+{
+    "mcpServers": {
+        "linear-server": {
+            "type": "http",
+            "url": "https://mcp.linear.app/mcp",
+            "headersHelper": "php bin/lundflow-linear-auth"
+        }
+    }
+}

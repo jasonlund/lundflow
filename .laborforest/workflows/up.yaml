@@ -1,0 +1,23 @@
+resource_type: workflow
+require_status: suspended
+ending_status: ready
+sort_order: 0
+steps:
+  # lundflow is a package: no database, no Herd site, no front end. A workspace is
+  # the fast-forward, the primary's .env (for LINEAR_API_KEY), and vendor/.
+  - name: 'Fetch from origin'
+    type: shell
+    run: 'git fetch origin --prune'
+  # The primary's artisan, since this worktree has no vendor/ yet. See the
+  # scaffold's up.yaml for why the sync is one command.
+  - name: 'Fast-forward onto origin/main'
+    type: shell
+    if: 'test "{{ WORKSPACE_DIR }}" != "{{ PROJECT_PRIMARY_DIR }}"'
+    run: 'php "{{ PROJECT_PRIMARY_DIR }}/artisan" lf:workspace-sync "{{ WORKSPACE_DIR }}"'
+  - name: 'Copy .env from the primary checkout'
+    type: shell
+    if: 'test "{{ WORKSPACE_DIR }}" != "{{ PROJECT_PRIMARY_DIR }}"'
+    run: 'cp "{{ PROJECT_PRIMARY_DIR }}/.env" .env'
+  - name: 'Install Composer dependencies'
+    type: shell
+    run: 'composer install --no-interaction --prefer-dist'
