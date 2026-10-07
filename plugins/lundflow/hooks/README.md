@@ -112,7 +112,8 @@ the session on a single bad payload. A **missing `jq` also exits 0** — that is
 property of the machine, so any other exit would nag on every call until it lands.
 
 Pinned by `tests/Feature/Hooks/BlockAskUserQuestionTest.php`; the rule it enforces
-is *Asking the user a question* in `.ai/guidelines/lundflow-workflow.md`.
+is *Asking the user a question* in `.ai/guidelines/lundflow-workflow.md`, under
+the *Kit root* setting.
 
 ## The background-dispatch guard
 

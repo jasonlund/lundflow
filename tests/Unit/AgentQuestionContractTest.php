@@ -148,7 +148,7 @@ $sectionOf = function (string $file, string $heading): string {
 /**
  * One `## ` section of the guideline source, the file most of these checks read.
  */
-$guidelineSection = fn (string $heading): string => $sectionOf('scaffold/.ai/guidelines/lundflow-workflow.md', $heading);
+$guidelineSection = fn (string $heading): string => $sectionOf(ToolkitFiles::kitGuideline('lundflow-workflow.md'), $heading);
 
 /**
  * The picker tool this repo bans outright, by its exact tool name.
@@ -456,7 +456,7 @@ describe('instruction surface prose', function () use ($pickerTool, $singleForma
         // Arrange
         $glyph = '~\x{2753}~u';
         $lines = $instructionSurfaceLines();
-        $canonical = ToolkitFiles::read('scaffold/.ai/guidelines/lundflow-workflow.md');
+        $canonical = ToolkitFiles::read(ToolkitFiles::kitGuideline('lundflow-workflow.md'));
 
         // Act
         $offenders = collect($lines)

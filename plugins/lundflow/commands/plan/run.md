@@ -52,6 +52,6 @@ slice. Do nothing further — execution is the `lundflow:tdd` skill's job.
 - **One stage at a time**; honor each skill's own gate.
 - **Defer, don't duplicate** — the skills own their logic; this file only routes.
 - Every ⏸ pause asks as a **decision round** — *Asking the user a question* in
-  `.ai/guidelines/lundflow-workflow.md`.
+  `.ai/guidelines/lundflow-workflow.md`, under the *Kit root* setting.
 
 $ARGUMENTS

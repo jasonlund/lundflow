@@ -1,1 +1,1 @@
-../../scaffold/.ai/guidelines/lundflow-worktree.md
+../../plugins/lundflow/guidelines/lundflow-worktree.md

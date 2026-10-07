@@ -257,9 +257,10 @@ describe('repo self-install', function () use ($untrackedOf, $repoRoot, $rootFil
         expect($lines)->toContain('/.laborforest/ignored/');
     });
 
-    // One copy of the kit's prose: the self-install reads scaffold/ through a
-    // symlink, so an edit made in either place is the same edit.
-    it('links each kit-owned guideline and doc into scaffold', function (string $path) use ($repoRoot): void {
+    // One copy of the kit's prose: the self-install reads the kit's copy through a
+    // symlink, so an edit made in either place is the same edit. The guideline
+    // layers live in the plugin; the agent docs live in scaffold/.
+    it('links each kit-owned guideline into the plugin and each agent doc into scaffold', function (string $path, string $source) use ($repoRoot): void {
         // Arrange
         $installed = $repoRoot().'/'.$path;
 
@@ -267,14 +268,30 @@ describe('repo self-install', function () use ($untrackedOf, $repoRoot, $rootFil
         $resolved = is_link($installed) ? realpath($installed) : false;
 
         // Assert
-        expect($resolved)->toBe(realpath($repoRoot()).'/scaffold/'.$path);
+        expect($resolved)->toBe(realpath($repoRoot()).'/'.$source);
     })->with([
-        '.ai/guidelines/lundflow-linear.md',
-        '.ai/guidelines/lundflow-workflow.md',
-        '.ai/guidelines/lundflow-worktree.md',
-        'docs/agents/issue-tracker.md',
-        'docs/agents/linear-pr-open-contention.md',
+        ['.ai/guidelines/lundflow-linear.md', 'plugins/lundflow/guidelines/lundflow-linear.md'],
+        ['.ai/guidelines/lundflow-workflow.md', 'plugins/lundflow/guidelines/lundflow-workflow.md'],
+        ['.ai/guidelines/lundflow-worktree.md', 'plugins/lundflow/guidelines/lundflow-worktree.md'],
+        ['docs/agents/issue-tracker.md', 'scaffold/docs/agents/issue-tracker.md'],
+        ['docs/agents/linear-pr-open-contention.md', 'scaffold/docs/agents/linear-pr-open-contention.md'],
     ]);
+
+    // A symlink inside scaffold/ does not survive Composer's zip fallback, so the
+    // layers cannot stay there as links to the plugin copy — they leave entirely.
+    it('ships no kit-owned layer under scaffold/.ai/guidelines/', function () use ($repoRoot): void {
+        // Arrange
+        $directory = $repoRoot().'/scaffold/.ai/guidelines';
+
+        // Act
+        $shipped = collect(scandir($directory) ?: [])
+            ->reject(fn (string $entry): bool => in_array($entry, ['.', '..'], true))
+            ->values()
+            ->all();
+
+        // Assert
+        expect($shipped)->toBe(['lundflow-settings.md']);
+    });
 
     it('imports every lundflow guideline from CLAUDE.md', function () use ($rootFileLines): void {
         // Arrange

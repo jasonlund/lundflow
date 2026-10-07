@@ -118,11 +118,11 @@ critical rules at the top or the bottom.
 
 A **context pointer** is a line held in context that names out-of-context material
 and encodes the condition for reaching it. A skill's `description` is the leading
-example; a line in the *Guideline source* file naming `docs/agents/domain.md` is
-the same object, and so is a "see X" in a command. Its *wording*, not its target,
-decides when and how reliably the agent reaches the material. A must-have target
-behind a weak pointer is a variance bug — sharpen the wording before inlining
-anything.
+example; a line in the *Guideline source* file naming `docs/agents/domain.md`
+under the *Kit root* setting is the same object, and so is a "see X" in a
+command. Its *wording*, not its target, decides when and how reliably the agent
+reaches the material. A must-have target behind a weak pointer is a variance bug
+— sharpen the wording before inlining anything.
 
 A pointer does two jobs: say what the material is, and list the **branches** that
 should trigger it. It is always loaded, so it earns harder pruning than the body:

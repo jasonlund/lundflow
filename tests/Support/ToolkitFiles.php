@@ -26,6 +26,20 @@ use Symfony\Component\Finder\SplFileInfo;
 final readonly class ToolkitFiles
 {
     /**
+     * The kit-owned guideline layers, by filename. A literal list, not a scan of
+     * the plugin's guidelines directory: a layer dropped there by mistake would
+     * join the set and pass every check that iterates it.
+     *
+     * @var list<string>
+     */
+    public const array KIT_GUIDELINE_LAYERS = [
+        'lundflow-workflow.md',
+        'lundflow-linear.md',
+        'lundflow-worktree.md',
+        'lundflow-laravel.md',
+    ];
+
+    /**
      * An absolute path inside the repo, from a repo-relative one.
      *
      * The Unit suite doesn't boot the app container, so the root is resolved
@@ -44,6 +58,15 @@ final readonly class ToolkitFiles
     public static function read(string $relative): string
     {
         return (string) file_get_contents(self::path($relative));
+    }
+
+    /**
+     * The repo-relative path of a kit-owned guideline layer — the plugin copy, which
+     * a project reads at `.ai/guidelines/` once installed.
+     */
+    public static function kitGuideline(string $layer): string
+    {
+        return 'plugins/lundflow/guidelines/'.$layer;
     }
 
     /**
@@ -197,7 +220,8 @@ final readonly class ToolkitFiles
      *
      * `${CLAUDE_PLUGIN_ROOT}` expands to the citing file's own plugin — never a
      * sibling — so it resolves inside that plugin. `.ai/…` and `docs/…` name files
-     * the consuming project owns, which the kit provides through `scaffold/`. A
+     * the consuming project owns, which the kit provides through `scaffold/` — except
+     * the kit-owned guideline layers, which it installs from the plugin. A
      * `.claude/…` path resolves to nothing: an installed plugin lives in the plugin
      * cache, so no kit file is ever at the project's `.claude/`.
      */
@@ -205,10 +229,17 @@ final readonly class ToolkitFiles
     {
         $candidate = match (true) {
             Str::startsWith($path, '${CLAUDE_PLUGIN_ROOT}/') => 'plugins/'.Str::betweenFirst($citingFile, 'plugins/', '/').'/'.Str::after($path, '${CLAUDE_PLUGIN_ROOT}/'),
+            self::isKitGuidelineReference($path) => self::kitGuideline(basename($path)),
             Str::startsWith($path, ['.ai/', 'docs/']) => 'scaffold/'.$path,
             default => null,
         };
 
         return $candidate !== null && file_exists(self::path($candidate)) ? $candidate : null;
+    }
+
+    private static function isKitGuidelineReference(string $path): bool
+    {
+        return dirname($path) === '.ai/guidelines'
+            && in_array(basename($path), self::KIT_GUIDELINE_LAYERS, true);
     }
 }

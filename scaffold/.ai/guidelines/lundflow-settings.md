@@ -2,11 +2,12 @@
 
 The per-project values the lundflow plugins read, each cited in the kit's prose as
 "the *Key* setting". Every key is required — write `none` where a project has no
-such thing.
+such thing, except *Kit root*, which is `.` when the kit sits at the repo root.
 
 | Key | Value |
 |---|---|
 | Ticket prefix | `<ABC>` |
+| Kit root | `.` |
 | Guideline source | `<.ai/guidelines/project.md>` |
 | Regenerate guidelines | `<php artisan boost:install --guidelines>` |
 | Backend test (filtered) | `<php artisan test --compact --filter='{filter}'>` |

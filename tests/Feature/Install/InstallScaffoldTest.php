@@ -61,24 +61,6 @@ function installProjectDir(array $files = []): string
 }
 
 /**
- * The kit-owned guideline layers, by filename under `.ai/guidelines/`.
- *
- * A literal list, not a directory scan of `scaffold/`: the scaffold also carries
- * the project-owned `lundflow-settings.md`, which a scan would sweep into the set.
- *
- * @return list<string>
- */
-function kitGuidelineLayers(): array
-{
-    return [
-        'lundflow-workflow.md',
-        'lundflow-linear.md',
-        'lundflow-worktree.md',
-        'lundflow-laravel.md',
-    ];
-}
-
-/**
  * Every file the kit ships under `scaffold/`, by its project-relative path, in
  * path order.
  *
@@ -154,7 +136,7 @@ afterEach(function (): void {
 });
 
 describe('lundflow:install kit-owned layers', function (): void {
-    it('creates every kit-owned layer byte-identical to its scaffold source in an empty project', function (): void {
+    it('creates every kit-owned layer byte-identical to its plugin guidelines source in an empty project', function (): void {
         // Arrange
         $dir = installProjectDir();
 
@@ -162,17 +144,17 @@ describe('lundflow:install kit-owned layers', function (): void {
         $this->artisan('lundflow:install', ['--path' => $dir])->assertSuccessful();
 
         // Assert
-        foreach (kitGuidelineLayers() as $layer) {
+        foreach (ToolkitFiles::KIT_GUIDELINE_LAYERS as $layer) {
             expect($dir.'/.ai/guidelines/'.$layer)->toBeFile();
             expect(File::get($dir.'/.ai/guidelines/'.$layer))
-                ->toBe(ToolkitFiles::read('scaffold/.ai/guidelines/'.$layer));
+                ->toBe(ToolkitFiles::read(ToolkitFiles::kitGuideline($layer)));
         }
     });
 
     it('reports each layer it creates, then the closing total and Done.', function (): void {
         // Arrange
         $dir = installProjectDir();
-        $scaffoldTotal = count(installScaffoldFiles());
+        $installedTotal = count(installScaffoldFiles()) + count(ToolkitFiles::KIT_GUIDELINE_LAYERS);
 
         // Act
         $exitCode = Artisan::call('lundflow:install', ['--path' => $dir]);
@@ -185,7 +167,7 @@ describe('lundflow:install kit-owned layers', function (): void {
             ->toContain('  [install created .ai/guidelines/lundflow-linear.md]')
             ->toContain('  [install created .ai/guidelines/lundflow-worktree.md]')
             ->toContain('  [install created .ai/guidelines/lundflow-laravel.md]');
-        expect(array_slice($lines, -2))->toBe(["  [install files {$scaffoldTotal}]", 'Done.']);
+        expect(array_slice($lines, -2))->toBe(["  [install files {$installedTotal}]", 'Done.']);
     });
 
     // Kit-owned means the kit's copy always wins: a project that hand-edits a layer
@@ -204,7 +186,7 @@ describe('lundflow:install kit-owned layers', function (): void {
         expect(installOutputLines(Artisan::output()))
             ->toContain('  [install updated .ai/guidelines/lundflow-workflow.md]');
         expect(File::get($dir.'/.ai/guidelines/lundflow-workflow.md'))
-            ->toBe(ToolkitFiles::read('scaffold/.ai/guidelines/lundflow-workflow.md'));
+            ->toBe(ToolkitFiles::read(ToolkitFiles::kitGuideline('lundflow-workflow.md')));
     });
 
     // The mtime is pinned an hour into the past so any rewrite — even one writing
@@ -213,7 +195,7 @@ describe('lundflow:install kit-owned layers', function (): void {
     it('leaves a layer already identical to the kit copy untouched and reports it unchanged', function (): void {
         // Arrange
         $dir = installProjectDir([
-            '.ai/guidelines/lundflow-workflow.md' => ToolkitFiles::read('scaffold/.ai/guidelines/lundflow-workflow.md'),
+            '.ai/guidelines/lundflow-workflow.md' => ToolkitFiles::read(ToolkitFiles::kitGuideline('lundflow-workflow.md')),
         ]);
         $layer = $dir.'/.ai/guidelines/lundflow-workflow.md';
         touch($layer, 1_700_000_000);

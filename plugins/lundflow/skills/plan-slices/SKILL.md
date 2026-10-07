@@ -30,7 +30,8 @@ Resolve the target before analyzing — prompt if it's unclear, never invent one
 - **A Linear ticket id** (the default when invoked by `lundflow:plan-breakdown`) → read the
   ticket's plan from its body; **append the backlog into that same body** via the
   `linear-server` MCP (`save_issue` with `description`, per *Linear* in
-  `.ai/guidelines/lundflow-linear.md`: write to the ticket body, never a comment),
+  `.ai/guidelines/lundflow-linear.md` under the *Kit root* setting: write to the
+  ticket body, never a comment),
   so one ticket = one self-contained body.
 - **A plan file path** → append the backlog to that file.
 
@@ -96,7 +97,7 @@ spreading evenly over every edge case.
 Put the seam list at the **top of the backlog** and confirm it with the user
 alongside the testability findings. Ask that round — seams and findings together —
 as a **decision round**: *Asking the user a question* in
-`.ai/guidelines/lundflow-workflow.md`.
+`.ai/guidelines/lundflow-workflow.md` under the *Kit root*.
 
 **Source:** the seam contract is adapted from `mattpocock-skills:tdd`'s *Seams:
 where tests go* (test only at pre-agreed seams, prefer the existing public
@@ -198,10 +199,10 @@ to execute the first slice. Do nothing else.
 **Advance the ticket to Todo.** When the target is a **Linear ticket** and the
 backlog has been appended, the ticket is planned and ready — move it to **Todo**
 per the *Automatic ticket status transitions* contract in
-`.ai/guidelines/lundflow-linear.md` (forward-only, active ticket only), and note
-the move in the hand-off line. When called per-ticket by `lundflow:plan-breakdown`,
-do this for each ticket you slice. Skip when the target is a plain plan file (no
-ticket to move).
+`.ai/guidelines/lundflow-linear.md` under the *Kit root* (forward-only, active
+ticket only), and note the move in the hand-off line. When called per-ticket by
+`lundflow:plan-breakdown`, do this for each ticket you slice. Skip when the
+target is a plain plan file (no ticket to move).
 
 ## Reference
 

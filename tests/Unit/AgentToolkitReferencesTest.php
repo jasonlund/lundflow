@@ -30,7 +30,8 @@ use Tests\Support\ToolkitFiles;
  *
  * NB: the placeholder-bearing paths this file must ignore (`{Domain}`, `*.md`)
  * are excluded by the character class rather than a deny-list, so a new
- * placeholder style can never silently become an offender.
+ * placeholder style can never silently become an offender. `NNNN` is the one
+ * placeholder made only of path characters, so it takes a lookahead instead.
  */
 
 /**
@@ -57,16 +58,18 @@ $scanReferences = function (): array {
         $lines = preg_split('/\r\n|\n|\r/', (string) file_get_contents($file->getRealPath()));
 
         foreach ($lines as $index => $text) {
-            // Three deliberate narrowings, each closing a false positive:
+            // Four deliberate narrowings, each closing a false positive:
             //   - the lookbehind drops `~/.claude/…` and any absolute path, which
             //     are real files but not resolvable against the repo root;
             //   - the trailing extension requires a *file*, so prose like "a
             //     docs/config edit" is not read as a path;
             //   - the class excludes `{`, `}` and `*`, so templated paths
-            //     (`app/Domains/{Domain}/…`, `docs/agents/*.md`) never match.
+            //     (`app/Domains/{Domain}/…`, `docs/agents/*.md`) never match;
+            //   - the lookahead drops a path with an `NNNN` number placeholder
+            //     (`docs/adr/NNNN-slug.md`), which names a shape, not a file.
             // A file is what an agent actually loads, so a file is what drifts
             // silently — a bare directory mention has no load to fail.
-            preg_match_all('#(?<![~/\w])(?:\$\{CLAUDE_PLUGIN_ROOT\}|\.claude|\.ai|docs)/[A-Za-z0-9._\-/]+\.[A-Za-z0-9]{2,4}\b#', $text, $matches);
+            preg_match_all('#(?<![~/\w])(?:\$\{CLAUDE_PLUGIN_ROOT\}|\.claude|\.ai|docs)/(?![A-Za-z0-9._\-/]*\bNNNN\b)[A-Za-z0-9._\-/]+\.[A-Za-z0-9]{2,4}\b#', $text, $matches);
 
             foreach ($matches[0] as $path) {
                 $references[] = [
@@ -96,6 +99,19 @@ describe('toolkit reference graph', function () use ($scanReferences): void {
 
         // Assert
         expect($dangling)->toBe([]);
+    });
+
+    // The kit-owned layers ship in the plugin, not in scaffold/, so a citation of
+    // the project path they install to has to land on the plugin copy.
+    it('resolves a cited kit-owned guideline to the plugin copy', function (): void {
+        // Arrange
+        $citingFile = 'plugins/lundflow/skills/tdd/SKILL.md';
+
+        // Act
+        $resolved = ToolkitFiles::resolveReference($citingFile, '.ai/guidelines/lundflow-workflow.md');
+
+        // Assert
+        expect($resolved)->toBe('plugins/lundflow/guidelines/lundflow-workflow.md');
     });
 
     it('actually scans the toolkit rather than silently finding nothing', function () use ($scanReferences): void {

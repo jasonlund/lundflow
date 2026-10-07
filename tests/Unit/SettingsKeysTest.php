@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Collection;
 use Symfony\Component\Finder\Finder;
 use Tests\Support\ToolkitFiles;
 
@@ -18,15 +19,38 @@ use Tests\Support\ToolkitFiles;
 $templatePath = 'scaffold/.ai/guidelines/lundflow-settings.md';
 
 /**
+ * Every row of a settings file's table, header and separator included, with each
+ * cell as the table renders it — backticks included.
+ *
+ * A list rather than a map, so a key declared twice stays two rows. The value
+ * cell is optional in the pattern so a malformed row still surfaces its key,
+ * with an empty value, instead of dropping out of the key list.
+ *
+ * @return Collection<int, array{key: string, value: string}>
+ */
+$tableRows = fn (string $path): Collection => collect(ToolkitFiles::splitLines(ToolkitFiles::read($path)))
+    ->map(fn (string $line): ?array => preg_match('/^\|\s*([^|]+?)\s*\|(?:\s*(.*?)\s*\|\s*$)?/', $line, $cells) === 1 ? ['key' => $cells[1], 'value' => $cells[2] ?? ''] : null)
+    ->filter()
+    ->values();
+
+/**
  * The first-column keys of the template's table, header and separator rows aside.
  *
  * @return list<string>
  */
-$templateKeys = fn (): array => collect(ToolkitFiles::splitLines(ToolkitFiles::read($templatePath)))
-    ->map(fn (string $line): ?string => preg_match('/^\|\s*([^|]+?)\s*\|/', $line, $cell) === 1 ? $cell[1] : null)
-    ->filter()
+$templateKeys = fn (): array => $tableRows($templatePath)
+    ->pluck('key')
     ->reject(fn (string $key): bool => $key === 'Key' || preg_match('/^-+$/', $key) === 1)
     ->values()
+    ->all();
+
+/**
+ * The settings table this repo answers for itself.
+ *
+ * @return array<string, string> key => value cell
+ */
+$repoSettings = fn (): array => $tableRows('.ai/guidelines/lundflow-settings.md')
+    ->pluck('value', 'key')
     ->all();
 
 /**
@@ -71,6 +95,7 @@ describe('settings template', function () use ($templateKeys): void {
         // Arrange
         $expected = [
             'Ticket prefix',
+            'Kit root',
             'Guideline source',
             'Regenerate guidelines',
             'Backend test (filtered)',
@@ -91,6 +116,21 @@ describe('settings template', function () use ($templateKeys): void {
 
         // Assert
         expect($keys)->toBe($expected);
+    });
+});
+
+describe('this repo\'s settings', function () use ($repoSettings): void {
+    // The committed install keeps the kit's files at the repo root, so the answer
+    // is the literal `.` rather than a directory name.
+    it('answers Kit root with `.`', function () use ($repoSettings): void {
+        // Arrange
+        // the committed settings table is the whole input
+
+        // Act
+        $settings = $repoSettings();
+
+        // Assert
+        expect($settings['Kit root'] ?? null)->toBe('`.`');
     });
 });
 

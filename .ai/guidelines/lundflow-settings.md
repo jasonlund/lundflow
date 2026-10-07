@@ -2,11 +2,12 @@
 
 The per-project values the lundflow plugins read, each cited in the kit's prose as
 "the *Key* setting". Every key is required — write `none` where a project has no
-such thing.
+such thing, except *Kit root*, which is `.` when the kit sits at the repo root.
 
 | Key | Value |
 |---|---|
 | Ticket prefix | `LUN` |
+| Kit root | `.` |
 | Guideline source | `CLAUDE.md` |
 | Regenerate guidelines | `none` |
 | Backend test (filtered) | `vendor/bin/pest --compact --filter='{filter}'` |
