@@ -90,9 +90,10 @@ misread.
     columns or shapes — fixtures and schemas mirror byte-exact reality, not a guess
     at it. (e.g. hit the real upstream response before choosing model columns.)
 - **Read the domain glossary** — `CONTEXT.md` and any `docs/adr/` entries touching
-  this area (`docs/agents/domain.md`). Name concepts the way the glossary names
-  them, and if the plan contradicts an ADR, **say so explicitly** rather than
-  silently overriding it. Missing files → proceed silently.
+  this area (`docs/agents/domain.md` under the *Kit root* setting). Name concepts
+  the way the glossary names them, and if the plan contradicts an ADR, **say so
+  explicitly** rather than silently overriding it. Missing files → proceed
+  silently.
 - **Map the surface.** Which single `app/Domains/*` context this lives in, and
   whether each piece is backend / frontend / full-stack.
 
@@ -119,7 +120,8 @@ Walk the clusters **one at a time** — phased approval, one workstream locked b
 the next, never the whole plan for one big yes/no. Per cluster: state the decision,
 give 2–3 concrete options with a **recommendation and its reasoning**, ask the
 cluster as one **decision round** — *Asking the user a question* in
-`.ai/guidelines/lundflow-workflow.md` — then wait for the user's pick.
+`.ai/guidelines/lundflow-workflow.md` under the *Kit root* — then wait for the
+user's pick.
 
 Record each **locked decision** with the rationale, so downstream (and the ticket
 reader) sees *why*, not just *what*.
@@ -200,10 +202,10 @@ this complete plan.**
 
 Only after Phase D approval, write the approved plan into the **same ticket body**,
 **replacing** it (`linear-server` `save_issue` with `description` — per *Linear* in
-`.ai/guidelines/lundflow-linear.md`, the ticket body is the single source of truth;
-write there, never a comment). Preserve any original acceptance intent by folding
-it into Problem/Solution. Write it verbatim as approved — do not re-plan or add at
-this step.
+`.ai/guidelines/lundflow-linear.md` under the *Kit root*, the ticket body is the
+single source of truth; write there, never a comment). Preserve any original
+acceptance intent by folding it into Problem/Solution. Write it verbatim as
+approved — do not re-plan or add at this step.
 
 ## Phase F — Stop and route
 
@@ -230,4 +232,5 @@ changes, and never enter breakdown or slicing yourself.
 - The skill the *Seam reference skill* setting names, loaded with the Skill tool —
   module/interface/depth/seam vocabulary; use its words when a locked decision is
   about an interface's shape.
-- `docs/agents/domain.md` — how to consume `CONTEXT.md` and `docs/adr/`.
+- `docs/agents/domain.md` under the *Kit root* — how to consume `CONTEXT.md` and
+  `docs/adr/`.

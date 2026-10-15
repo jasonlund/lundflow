@@ -48,7 +48,8 @@ anything else that renders — it renders the result and checks it in a real bro
   intended, and the console shows no JavaScript errors.
 - **Reaching the app:** open the workspace URL `lf:workspace-env` derives. With no
   dev server up, the agent may run `npm run build`. Starting a Solo process stays
-  human-only (*Local worktree tooling* in `.ai/guidelines/lundflow-worktree.md`).
+  human-only (*Local worktree tooling* in `.ai/guidelines/lundflow-worktree.md`,
+  under the *Kit root* setting).
 - **A failed check** — a console error, the changed UI missing or broken, or
   `npm run build` failing on the code — is fixed as part of the work, then re-run.
 - **Not a gate.** When neither tool can run the check — extension not connected, no
@@ -146,8 +147,8 @@ they live under `~/.claude/skills/mattpocock-skills/`, so **every one is invoked
 with that prefix** and none of them are available in a checkout on a machine that
 has not installed them; the skill files' own cross-references to bare
 `/to-spec`-style names are upstream text and are stale here. Written by
-`mattpocock-skills:setup-matt-pocock-skills`; edit `docs/agents/*.md` directly to
-change the config.
+`mattpocock-skills:setup-matt-pocock-skills`; edit `docs/agents/*.md` under the
+*Kit root* directly to change the config.
 
 **`/map` is the router** — one user-invoked skill naming every skill, command,
 subagent, and flow here, and pointing at the phase-boundary tree beside it. Open it
@@ -188,17 +189,17 @@ Linear, tickets `{PREFIX}-123` (where `{PREFIX}` is the *Ticket prefix* setting)
 via `mcp__linear-server__*`, or Linear's GraphQL API with the project's
 `LINEAR_API_KEY` when the MCP answers for another workspace — GitHub Issues are
 unused. See
-`docs/agents/issue-tracker.md`.
+`docs/agents/issue-tracker.md` under the *Kit root*.
 
 ### Triage labels
 
 The five canonical roles, each label string equal to its name. See
-`docs/agents/triage-labels.md`.
+`docs/agents/triage-labels.md` under the *Kit root*.
 
 ### Domain docs
 
 Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See
-`docs/agents/domain.md`.
+`docs/agents/domain.md` under the *Kit root*.
 
 ## Linting & formatting (finalize gates)
 

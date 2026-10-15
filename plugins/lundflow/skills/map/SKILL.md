@@ -94,10 +94,11 @@ Situations that generate work and then merge onto the flow.
   skill* setting: the vocabulary layer beneath planning, tdd, and review — module,
   interface, depth, **seam**, adapter, leverage, locality.
 - **Asking the user a question** — not a skill but a section of
-  `.ai/guidelines/lundflow-workflow.md`: the one contract every skill and command asks
-  under, the two renderings that carry it (the decision round, and the disposition
-  list `/lundflow:review:process` uses), and the silence contract that makes an
-  unanswered question lock at its recommendation.
+  `.ai/guidelines/lundflow-workflow.md` under the *Kit root* setting: the one
+  contract every skill and command asks under, the two renderings that carry it
+  (the decision round, and the disposition list `/lundflow:review:process` uses),
+  and the silence contract that makes an unanswered question lock at its
+  recommendation.
 - **Browser verification** — also a section of `.ai/guidelines/lundflow-workflow.md`:
   the render check after any UI change, and the flag written when it cannot run.
 

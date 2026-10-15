@@ -107,4 +107,4 @@ Review in Linear's GitHub settings — a vendor-dashboard click, so offer
 `mattpocock-skills:wizard`.
 
 The incident behind the rule and the timing forensics:
-`docs/agents/linear-pr-open-contention.md`.
+`docs/agents/linear-pr-open-contention.md`, under the *Kit root* setting.

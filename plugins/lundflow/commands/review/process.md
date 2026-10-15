@@ -202,8 +202,8 @@ One reply settles the whole list: every recommendation stands unless an override
 its number.
 
 This list is a **disposition list** — the rendering *Asking the user a question* in
-`.ai/guidelines/lundflow-workflow.md` defines for a batch of already-triaged items. The contract
-there binds it, numbering included.
+`.ai/guidelines/lundflow-workflow.md`, under the *Kit root* setting, defines for a batch of
+already-triaged items. The contract there binds it, numbering included.
 
 **Number the items globally `1..N`. A number is assigned once and keeps naming that item
 for the rest of the session** — the Phase 6 summary, and any later round. A delta round
@@ -400,8 +400,8 @@ has returned and every blocker is settled.
 3. Re-dispatch a fixer for anything red or unaddressed, or surface it to the user. A red
    suite stops the run here.
 4. When any fix changed anything a user sees, run the render check per
-   *Browser verification* in `.ai/guidelines/lundflow-workflow.md`. An unverifiable
-   or failed check does not stop the run.
+   *Browser verification* in `.ai/guidelines/lundflow-workflow.md` under the *Kit root*.
+   An unverifiable or failed check does not stop the run.
 
 ---
 

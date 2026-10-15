@@ -49,7 +49,8 @@ confirms. `lundflow:plan-slices` (the back half) stays side-effect-free.
   - `${CLAUDE_PLUGIN_ROOT}/skills/tdd/SKILL.md` — slice rules; the skills the
     *Conventions skill: backend* / *Conventions skill: frontend* settings name, loaded
     with the Skill tool, for stack conventions.
-  - `CONTEXT.md` + any `docs/adr/` entries touching the area (`docs/agents/domain.md`).
+  - `CONTEXT.md` + any `docs/adr/` entries touching the area (`docs/agents/domain.md`
+    under the *Kit root* setting).
     Ticket titles and descriptions use the glossary's vocabulary; flag an ADR
     conflict explicitly instead of silently overriding it. Missing files → proceed
     silently.
@@ -182,14 +183,15 @@ gate it rather than merely relating to it, and whether any pair should be merged
 or split.
 
 Ask those three as a **decision round** — *Asking the user a question* in
-`.ai/guidelines/lundflow-workflow.md`.
+`.ai/guidelines/lundflow-workflow.md` under the *Kit root*.
 
 **GATE:** no Linear write happens until the user approves this breakdown.
 
 ## Phase D — Create tickets (only after approval)
 
 Use the `linear-server` MCP (`save_issue`). Per the Linear convention (*Linear* in
-`.ai/guidelines/lundflow-linear.md`), **write to the ticket body, never a comment**:
+`.ai/guidelines/lundflow-linear.md` under the *Kit root*), **write to the ticket
+body, never a comment**:
 
 - Create each sub-ticket under the parent via `parentId`; inherit the parent's
   `project` and `milestone`.
@@ -218,8 +220,8 @@ and run `lundflow:tdd` against. Then **stop** — execution is the `lundflow:tdd
 Phase D creates each sub-ticket in the default (Backlog) status; it sets no status
 itself. Each sub-ticket reaches **Todo** through its own `lundflow:plan-slices` pass here
 (the *Automatic ticket status transitions* contract in
-`.ai/guidelines/lundflow-linear.md`), not from breakdown. The parent ticket's status
-is left untouched.
+`.ai/guidelines/lundflow-linear.md` under the *Kit root*), not from breakdown. The
+parent ticket's status is left untouched.
 
 ## Reference
 

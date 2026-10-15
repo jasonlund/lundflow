@@ -281,9 +281,10 @@ they reach you through `CLAUDE.md` like any other rule.
   carrier to be republished behind `Common\Contracts` or a service: it adds an
   interface with no second implementation behind it.
 - `array_key_exists()` left as the native call — *Laravel helpers over PHP
-  functions* in `.ai/guidelines/lundflow-laravel.md` lists it under "**Stay native
-  — do NOT 'fix' these**", because `Arr::exists($array, $key)` swaps the argument
-  order and the positional Rector map cannot express it. It is also the correct
+  functions* in `.ai/guidelines/lundflow-laravel.md` under the *Kit root* setting
+  lists it under "**Stay native — do NOT 'fix' these**", because
+  `Arr::exists($array, $key)` swaps the argument order and the positional Rector
+  map cannot express it. It is also the correct
   choice where a key holding `null` must still count as present, which `isset()`
   would miss. Suggesting the `Arr::` swap is a review defect.
 

@@ -117,8 +117,9 @@ concerns, a short bullet list may follow the paragraph — but summary-first, al
 
 When the diff changes anything a user sees and this session holds a
 `⚠️ Not browser-verified` flag or no record that the render check ran
-(*Browser verification* in `.ai/guidelines/lundflow-workflow.md`), add
-`Browser verification: not done — {reason}` before the trailer.
+(*Browser verification* in `.ai/guidelines/lundflow-workflow.md`, under the
+*Kit root* setting), add `Browser verification: not done — {reason}` before the
+trailer.
 
 End the body with the standard trailer:
 ```
@@ -145,8 +146,9 @@ Delete the temp file after. Do not pass `--draft`.
 
 Once the PR is confirmed open, advance **every ticket the PR covers** to **In
 Review** via the `linear-server` MCP `save_issue`, per the *Automatic ticket
-status transitions* contract in `.ai/guidelines/lundflow-linear.md` (forward-only;
-skip Canceled/Duplicate; no-op if already In Review or later).
+status transitions* contract in `.ai/guidelines/lundflow-linear.md` under the
+*Kit root* (forward-only; skip Canceled/Duplicate; no-op if already In Review or
+later).
 
 **Then read it back — PR-open is contended.** Linear's GitHub integration reacts to
 the same `pull_request.opened` event and its default mapping for *opened* is In

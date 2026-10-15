@@ -23,8 +23,8 @@ final class InstallScaffold extends Command
     /**
      * The guideline layers the kit owns outright: a project that hand-edits one has
      * drifted from the kit, and a re-run is how it comes back in line. Every other
-     * scaffold file is project-owned — seeded once for the project to fill in, and
-     * never written over again.
+     * installed file is project-owned — seeded once from `scaffold/` for the project
+     * to fill in, and never written over again.
      *
      * @var list<string>
      */
@@ -57,7 +57,7 @@ final class InstallScaffold extends Command
         $root = $this->root();
 
         $this->installGitignoreEntry($root);
-        $this->installScaffoldFiles($root);
+        $this->installFiles($root);
 
         if ($this->option('linear-api-key') && ! $this->installLinearServer($root)) {
             return self::FAILURE;
@@ -90,9 +90,9 @@ final class InstallScaffold extends Command
         $this->output->writeln('  [install gitignore added '.self::GITIGNORE_ENTRY.']');
     }
 
-    private function installScaffoldFiles(string $root): void
+    private function installFiles(string $root): void
     {
-        $files = $this->scaffoldFiles();
+        $files = $this->installableFiles();
 
         foreach ($files as $file) {
             $status = $this->installFile($file, $root);
@@ -105,12 +105,11 @@ final class InstallScaffold extends Command
 
     private function installFile(string $file, string $root): string
     {
-        $source = $this->scaffoldPath($file);
         $target = $root.'/'.$file;
 
         return in_array($file, self::KIT_OWNED, true)
-            ? $this->installKitOwned($source, $target)
-            : $this->installProjectOwned($source, $target);
+            ? $this->installKitOwned($this->pluginGuidelinePath($file), $target)
+            : $this->installProjectOwned($this->scaffoldPath($file), $target);
     }
 
     /**
@@ -148,22 +147,40 @@ final class InstallScaffold extends Command
     }
 
     /**
-     * Enumerated from disk, dotfiles included, so a file added to the scaffold is
-     * installed without a code change.
+     * Every file the command installs, by the project path it lands at, in path
+     * order. The scaffold is enumerated from disk, dotfiles included, so a file
+     * added to it is installed without a code change; the kit-owned layers ship in
+     * the plugin, so they are named rather than found.
      *
      * @return list<string>
      */
-    private function scaffoldFiles(): array
+    private function installableFiles(): array
     {
         return collect(File::allFiles($this->scaffoldPath(''), true))
             ->map(fn (SplFileInfo $file): string => Str::replace(DIRECTORY_SEPARATOR, '/', $file->getRelativePathname()))
+            ->merge(self::KIT_OWNED)
+            ->sort(strcmp(...))
             ->values()
             ->all();
     }
 
+    /**
+     * Not under `scaffold/`: a symlink there does not survive Composer's zip
+     * fallback, and the plugin has to carry the layers for a session to read them.
+     */
+    private function pluginGuidelinePath(string $file): string
+    {
+        return $this->kitPath('plugins/lundflow/guidelines/'.basename($file));
+    }
+
     private function scaffoldPath(string $file): string
     {
-        return dirname(__DIR__, 3).'/scaffold/'.$file;
+        return $this->kitPath('scaffold/'.$file);
+    }
+
+    private function kitPath(string $relative): string
+    {
+        return dirname(__DIR__, 3).'/'.$relative;
     }
 
     /**

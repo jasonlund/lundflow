@@ -40,7 +40,7 @@ $anchor = 'Browser verification';
 /**
  * The guideline source the rule lives in, by repo-relative path.
  */
-$guideline = 'scaffold/.ai/guidelines/lundflow-workflow.md';
+$guideline = ToolkitFiles::kitGuideline('lundflow-workflow.md');
 
 /**
  * A citation: the italic anchor followed closely by the guideline path, allowing a
@@ -215,14 +215,15 @@ describe('citing sites', function () use ($citation, $sectionOf): void {
 describe('single source', function () use ($guideline, $sectionOf, $anchor, $citingSites, $minimumFileLines): void {
     it('states the tool order in the guideline and nowhere in the plugins', function () use ($guideline, $sectionOf, $anchor): void {
         // A site that names both tools on one line has re-grown its own copy of the
-        // tool order beside the pointer. The guideline lives under `scaffold/`, so
-        // every hit under `plugins/` is an offender.
+        // tool order beside the pointer. The guideline is the one file under
+        // `plugins/` allowed to, so every other hit there is an offender.
         // Arrange
         $lines = ToolkitFiles::scanLines((new Finder)->files()->in(ToolkitFiles::path('plugins'))->name('*.md'));
         $section = $sectionOf($guideline, $anchor);
 
         // Act
         $offenders = collect($lines)
+            ->reject(fn (array $line): bool => $line['file'] === $guideline)
             ->filter(fn (array $line): bool => Str::contains($line['text'], 'Claude in Chrome') && Str::contains($line['text'], 'Playwright'))
             ->map(fn (array $line): string => sprintf('%s:%d  →  %s', $line['file'], $line['line'], Str::trim($line['text'])))
             ->values()

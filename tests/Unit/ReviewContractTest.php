@@ -108,11 +108,13 @@ $survivingAgents = [
  * third-party captures that are not ours to police, and a `.tsv.gz` carries no
  * prose to drift. This file excludes itself — see the banner.
  *
- * `.ai/guidelines` is swept for a reason the other two roots don't share: it is
- * the SOURCE `php artisan boost:install --guidelines` generates `CLAUDE.md` and
- * `AGENTS.md` from. A retired name left in a guideline layer is copied verbatim into
- * both generated files on the next regeneration, so catching it at the generated
- * copies would be catching it one step too late.
+ * The guideline layers are swept for a reason the rest don't share: in a consuming
+ * project they are the SOURCE `php artisan boost:install --guidelines` generates
+ * `CLAUDE.md` and `AGENTS.md` from. A retired name left in a layer is copied
+ * verbatim into both generated files on the next regeneration, so catching it at
+ * the generated copies would be catching it one step too late. The kit-owned
+ * layers ship in the plugin and arrive through the `plugins` root; the
+ * `scaffold/.ai/guidelines` root is what reaches the project-owned settings layer.
  *
  * Finder throws on a directory that isn't there, so a root renamed out from
  * under this list fails loudly rather than quietly scanning less.
