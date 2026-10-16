@@ -1,4 +1,9 @@
-# lundflow
+<p align="left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="art/lundflow-logo-dark.svg">
+    <img src="art/lundflow-logo-light.svg" alt="lundflow" width="320">
+  </picture>
+</p>
 
 A Claude Code workflow kit for Laravel projects: a test-first TDD loop, a gated
 planning pipeline, multi-agent PR review, and a LaborForest + Solo worktree
